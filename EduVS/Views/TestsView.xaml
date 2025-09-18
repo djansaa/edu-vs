@@ -17,7 +17,8 @@
             </Grid.RowDefinitions>
 
             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                <Button Content="Refresh" Command="{Binding LoadTestsCommand}" Width="100"/>
+                <Button Content="Refresh" Command="{Binding LoadTestsCommand}" Width="100"  Margin="0,0,8,0"/>
+                <Button Content="Open tests folder" Command="{Binding OpenTestsFolderCommand}" Width="100"/>
             </StackPanel>
 
             <DataGrid Grid.Row="1"
@@ -28,11 +29,12 @@
                 SelectedItem="{Binding SelectedTest, Mode=TwoWay}"
                 CanUserAddRows="False">
                 <DataGrid.Columns>
+                    <DataGridTextColumn Header="Id" Binding="{Binding Id, StringFormat=G}" Width="50"/>
                     <DataGridTextColumn Header="Timestamp" Binding="{Binding TimeStamp, StringFormat=G}" Width="160"/>
-                    <DataGridTextColumn Header="Subject" Binding="{Binding SubjectDisplay}" Width="120"/>
+                    <DataGridTextColumn Header="Subject" Binding="{Binding Subject}" Width="120"/>
                     <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="200"/>
-                    <DataGridTextColumn Header="Template A Path" Binding="{Binding TemplatePathA}" Width="180"/>
-                    <DataGridTextColumn Header="Template B Path" Binding="{Binding TemplatePathB}" Width="180"/>
+                    <DataGridTextColumn Header="Template A Path" Binding="{Binding TemplateAPath}" Width="180"/>
+                    <DataGridTextColumn Header="Template B Path" Binding="{Binding TemplateBPath}" Width="180"/>
                 </DataGrid.Columns>
             </DataGrid>
         </Grid>
@@ -49,45 +51,166 @@
 
         <!-- right side: detail / edit -->
         <Border Grid.Column="2" Padding="10" BorderBrush="LightGray" BorderThickness="1" CornerRadius="4">
-            <StackPanel>
-                <TextBlock FontSize="16" FontWeight="Bold" Margin="0,0,0,8"/>
+            <StackPanel Orientation="Vertical">
+                <!-- selected test data -->
+                <StackPanel x:Name="stackpanel_update_selected_test" Margin="0,0,0,0">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedTest}" Value="{x:Null}">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
 
-                <StackPanel Orientation="Horizontal" Margin="0,4">
-                    <TextBlock Text="Subject:" Width="100"/>
-                    <ComboBox Width="250"
+                    <TextBlock Text="Selected test" FontSize="25" FontWeight="Bold" Margin="0,0,0,8"/>
+                    <Button Content="Cancel selected" Command="{Binding CancelSelectedTestCommand}" Width="100" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,4">
+                        <TextBlock Text="Subject:" Width="100"/>
+                        <TextBox Text="{Binding SelectedTest.Subject, Mode=OneWay, StringFormat='{}{0}', TargetNullValue=''}" Width="250" IsReadOnly="True"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,4">
+                        <TextBlock Text="Test name:" Width="100"/>
+                        <TextBox Text="{Binding SelectedTest.Name, UpdateSourceTrigger=PropertyChanged}" Width="250" IsReadOnly="True"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,4">
+                        <TextBlock Text="Template A Path:" Width="100"/>
+                        <TextBox Text="{Binding SelectedTest.TemplateAPath, UpdateSourceTrigger=PropertyChanged}" Width="250" IsReadOnly="True"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,4">
+                        <TextBlock Text="Template B Path:" Width="100"/>
+                        <TextBox Text="{Binding SelectedTest.TemplateBPath, UpdateSourceTrigger=PropertyChanged}" Width="250" IsReadOnly="True"/>
+                    </StackPanel>
+
+                </StackPanel>
+
+                <!-- add new test / update selected test -->
+                <StackPanel>
+                    
+                    <TextBlock Text="Add new test" FontSize="25" FontWeight="Bold" Margin="0,0,0,8">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SelectedTest}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                        
+                    <TextBlock Text="Update selected test" FontSize="25" FontWeight="Bold" Margin="0,0,0,8">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SelectedTest}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,4">
+                        <TextBlock Text="Subject:" Width="100"/>
+                        <ComboBox Width="250"
                         ItemsSource="{Binding Subjects}"
                         SelectedValuePath="Code"
-                        SelectedValue="{Binding SelectedTest.SubjectCode, Mode=TwoWay}" />
-                    <Button 
-                        Content="Add Subject"
+                        SelectedValue="{Binding TempSubjectCode, Mode=TwoWay}" />
+                        <Button 
+                        Content="Add New Subject"
                         Command="{Binding AddSubjectCommand}"
                         Margin="5,0,0,0"
-                        Width="100"/>
+                        Width="150"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,4">
+                        <TextBlock Text="Test name:" Width="100"/>
+                        <TextBox Text="{Binding TempTestName, UpdateSourceTrigger=PropertyChanged}" Width="400"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,4">
+                        <TextBlock Text="Template A Path:" Width="100"/>
+                        <TextBox Text="{Binding TempTemplateAPath, UpdateSourceTrigger=PropertyChanged}" Width="400" IsReadOnly="True"/>
+                        <Button Content="Browse..." Command="{Binding BrowseTemplateACommand}" Margin="4,0,0,0" ToolTip="Select PDF" Width="100"/>
+                        <Button Content="Show PDF" Command="{Binding ShowTemplateACommand}" Margin="4,0,0,0" ToolTip="Show PDF" Width="100" Visibility="Hidden"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,4">
+                        <TextBlock Text="Template B Path:" Width="100"/>
+                        <TextBox Text="{Binding TempTemplateBPath, UpdateSourceTrigger=PropertyChanged}" Width="400" IsReadOnly="True"/>
+                        <Button Content="Browse..." Command="{Binding BrowseTemplateBCommand}" Margin="4,0,0,0" ToolTip="Select PDF" Width="100"/>
+                        <Button Content="Show PDF" Command="{Binding ShowTemplateBCommand}" Margin="4,0,0,0" ToolTip="Show PDF" Width="100" Visibility="Hidden"/>
+                    </StackPanel>
+
+
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                        <!-- Add -->
+                        <Button Content="Add" Command="{Binding AddNewTestCommand}" Width="100" Margin="0,0,10,0">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SelectedTest}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                        <!-- Clear -->
+                        <Button Content="Clear" Command="{Binding ClearNewTestCommand}" Width="100" Margin="0,0,10,0">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SelectedTest}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                        <!-- Update -->
+                        <Button Content="Update" Command="{Binding UpdateSelectedTestCommand}" Width="100" Margin="0,0,10,0">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SelectedTest}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                        <!-- Delete -->
+                        <Button Content="Delete" Command="{Binding DeleteSelectedTestCommand}" Width="100" Margin="0,0,10,0">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SelectedTest}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                    </StackPanel>
                 </StackPanel>
 
-                <StackPanel Orientation="Horizontal" Margin="0,4">
-                    <TextBlock Text="Test name:" Width="100"/>
-                    <TextBox Text="{Binding SelectedTest.Name, UpdateSourceTrigger=PropertyChanged}" Width="250"/>
-                </StackPanel>
-
-                <StackPanel Orientation="Horizontal" Margin="0,4">
-                    <TextBlock Text="Template A Path:" Width="100"/>
-                    <TextBox Text="{Binding SelectedTest.TemplatePathA, UpdateSourceTrigger=PropertyChanged}" Width="250" IsReadOnly="True"/>
-                    <Button Content="Browse..." Command="{Binding BrowseTemplateACommand}" Margin="4,0,0,0" ToolTip="Select PDF" Width="100"/>
-                </StackPanel>
-
-                <StackPanel Orientation="Horizontal" Margin="0,4">
-                    <TextBlock Text="Template B Path:" Width="100"/>
-                    <TextBox Text="{Binding SelectedTest.TemplatePathB, UpdateSourceTrigger=PropertyChanged}" Width="250" IsReadOnly="True"/>
-                    <Button Content="Browse..." Command="{Binding BrowseTemplateBCommand}" Margin="4,0,0,0" ToolTip="Select PDF" Width="100"/>
-                </StackPanel>
-
-
-                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                    <Button Content="Save" Command="{Binding SaveTestCommand}" Width="100" Margin="0,0,10,0"/>
-                    <Button Content="Delete" Command="{Binding DeleteTestCommand}" Width="100" Margin="0,0,10,0"/>
-                    <Button Content="Cancel" Command="{Binding CancelNewCommand}" Width="100"/>
-                </StackPanel>
             </StackPanel>
         </Border>
     </Grid>

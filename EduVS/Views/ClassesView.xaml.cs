@@ -16,11 +16,11 @@ using System.Windows.Shapes;
 namespace EduVS.Views
 {
     /// <summary>
-    /// Interaction logic for StudentsView.xaml
+    /// Interaction logic for ClassesView.xaml
     /// </summary>
-    public partial class StudentsView : UserControl
+    public partial class ClassesView : UserControl
     {
-        public StudentsView()
+        public ClassesView()
         {
             InitializeComponent();
         }

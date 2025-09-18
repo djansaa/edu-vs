@@ -16,9 +16,9 @@ namespace EduVS.Models
         public string Name { get; set; } = null!;
 
         [Required]
-        public string TemplatePathA { get; set; } = null!;
+        public string TemplateAPath { get; set; } = null!;
 
-        public string? TemplatePathB { get; set; }
+        public string? TemplateBPath { get; set; }
 
         public Subject? Subject { get; set; }
     }

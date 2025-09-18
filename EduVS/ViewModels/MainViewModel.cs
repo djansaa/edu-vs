@@ -11,13 +11,14 @@ namespace EduVS.ViewModels
         private ObservableObject? currentViewModel;
 
         public IRelayCommand ShowTestsCommand { get; }
-        public IRelayCommand ShowStudentsCommand { get; }
+        public IRelayCommand ShowClassesCommand { get; }
 
-        public MainViewModel(ILogger<MainViewModel> logger, AppDbContext db, TestsViewModel testsVm, StudentsViewModel studentsVm) : base(logger, db)
+        public MainViewModel(ILogger<MainViewModel> logger, AppDbContext db, TestsViewModel testsVm, ClassesViewModel classesVm) : base(logger, db)
         {
             ShowTestsCommand = new RelayCommand(() => CurrentViewModel = testsVm);
-            ShowStudentsCommand = new RelayCommand(() => CurrentViewModel = studentsVm);
+            ShowClassesCommand = new RelayCommand(() => CurrentViewModel = classesVm);
 
+            // default view
             CurrentViewModel = testsVm;
         }
     }

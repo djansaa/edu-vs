@@ -10,8 +10,8 @@
         </DataTemplate>
         
         <!-- students -->
-        <DataTemplate DataType="{x:Type vm:StudentsViewModel}">
-            <views:StudentsView />
+        <DataTemplate DataType="{x:Type vm:ClassesViewModel}">
+            <views:ClassesView />
         </DataTemplate>
 
     </Application.Resources>

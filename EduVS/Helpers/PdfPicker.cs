@@ -1,14 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
+﻿
 namespace EduVS.Helpers
 {
     public class PdfPicker
     {
-        public string? PickPdf()
+        public static string? PickPdf()
         {
             var dlg = new Microsoft.Win32.OpenFileDialog
             {

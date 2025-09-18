@@ -32,12 +32,6 @@ namespace EduVS.Views
             SubjectCode = CodeTextBox.Text.Trim().ToUpper();
             SubjectName = NameTextBox.Text.Trim();
 
-            //if (string.IsNullOrWhiteSpace(SubjectCode) || string.IsNullOrWhiteSpace(SubjectName))
-            //{
-            //    MessageBox.Show("Both fields are required.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
-            //    return;
-            //}
-
             bool hasError = false;
 
             if (string.IsNullOrWhiteSpace(SubjectCode))

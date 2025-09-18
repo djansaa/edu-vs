@@ -13,7 +13,7 @@
     <Compile Update="Views\AddSubjectDialogWindow.xaml.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Update="Views\StudentsView.xaml.cs">
+    <Compile Update="Views\ClassesView.xaml.cs">
       <SubType>Code</SubType>
     </Compile>
     <Compile Update="Views\TestsView.xaml.cs">
