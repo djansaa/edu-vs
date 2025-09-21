@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using OpenCvSharp;
+using PdfSharp.Fonts;
 using Sdcb.RotationDetector;
 using Serilog;
 using System.Diagnostics;
@@ -21,18 +22,16 @@ namespace EduVS
 
         public App()
         {
-            var s0 = @"C:\Users\Jensa\Desktop\test_snimek_0.png";
-            var s180 = @"C:\Users\Jensa\Desktop\test_snimek_180.png";
+            //var s0 = @"C:\Users\Jensa\Desktop\test_snimek_0.png";
+            //var s180 = @"C:\Users\Jensa\Desktop\test_snimek_180.png";
 
-            using PaddleRotationDetector detector = new PaddleRotationDetector(RotationDetectionModel.EmbeddedDefault);
-            using Mat src = Cv2.ImRead(s0);
-            RotationResult r = detector.Run(src);
-            Debug.WriteLine($"{s0}: {r.Rotation}");
+            //using PaddleRotationDetector detector = new PaddleRotationDetector(RotationDetectionModel.EmbeddedDefault);
+            //using Mat src = Cv2.ImRead(s0);
+            //RotationResult r = detector.Run(src);
+            //Debug.WriteLine($"{s0}: {r.Rotation}");
 
-            using PaddleRotationDetector detector2 = new PaddleRotationDetector(RotationDetectionModel.EmbeddedDefault);
-            using Mat src2 = Cv2.ImRead(s180);
-            RotationResult r2 = detector2.Run(src2);
-            Debug.WriteLine($"{s180}: {r2.Rotation}");
+            // GLOBAL SETTINGS
+            GlobalFontSettings.FontResolver ??= new DejaVuFontResolver();
 
             // SERILOG
             Log.Logger = new LoggerConfiguration()

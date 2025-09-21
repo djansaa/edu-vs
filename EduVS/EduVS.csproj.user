@@ -16,6 +16,12 @@
     <Compile Update="Views\ClassesView.xaml.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Update="Views\GenerateTestWindowView.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="Views\ProcessTestWindowView.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Update="Views\TestsView.xaml.cs">
       <SubType>Code</SubType>
     </Compile>

@@ -24,11 +24,13 @@
             </StackPanel.Resources>
 
             
-            <Button Content="Classes" Command="{Binding ShowClassesCommand}" />
+            <Button Content="Classes" Command="{Binding ShowClassesCommand}" Visibility="Collapsed"/>
+            <Separator Margin="0,10" Visibility="Collapsed"/>
+            <Button Content="Tests" Command="{Binding ShowTestsCommand}" Visibility="Collapsed"/>
+            <Separator Margin="0,10" Visibility="Collapsed"/>
+            <Button Content="Create new test" Command="{Binding ShowGenerateTestWindowCommand}"/>
             <Separator Margin="0,10"/>
-            <Button Content="Tests" Command="{Binding ShowTestsCommand}" />
-            <Separator Margin="0,10"/>
-            <Button Content="PDF Rotator 🔄" Command="{Binding ShowPdfRotatorCommand}"/>
+            <Button Content="Process test" Command="{Binding ShowProcessTestWindowCommand}"/>
         </StackPanel>
 
         <GridSplitter Grid.Column="1"

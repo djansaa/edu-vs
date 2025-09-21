@@ -1,4 +1,6 @@
-﻿
+﻿using Microsoft.Win32;
+using System.IO;
+
 namespace EduVS.Helpers
 {
     public class PdfPicker
@@ -13,6 +15,30 @@ namespace EduVS.Helpers
             };
             bool? ok = dlg.ShowDialog();
             return ok == true ? dlg.FileName : null;
+        }
+
+        public static string? PickFolder()
+        {
+            var dlg = new OpenFolderDialog
+            {
+                Title = "Select Folder",
+                InitialDirectory = AppContext.BaseDirectory
+            };
+            return dlg.ShowDialog() == true ? dlg.FolderName : null;
+        }
+
+        public static string? PickPdfSavePath(string suggestedName)
+        {
+            var dlg = new SaveFileDialog
+            {
+                Title = "Export PDF",
+                Filter = "PDF (*.pdf)|*.pdf",
+                DefaultExt = ".pdf",
+                AddExtension = true,
+                OverwritePrompt = true,
+                FileName = suggestedName
+            };
+            return dlg.ShowDialog() == true ? Path.ChangeExtension(dlg.FileName, ".pdf") : null;
         }
     }
 }

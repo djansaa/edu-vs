@@ -1,0 +1,112 @@
+﻿<Window x:Class="EduVS.Views.GenerateTestWindowView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:sys="clr-namespace:System;assembly=mscorlib"
+        xmlns:local="clr-namespace:EduVS.Views"
+        xmlns:helpers="clr-namespace:EduVS.ViewHelpers"
+        mc:Ignorable="d"
+        Title="Generate Test" Height="600" Width="720"
+        WindowStartupLocation="CenterOwner">
+    
+    <Window.Resources>
+        <helpers:NonNegativeIntConverter x:Key="NonNegInt" />
+    </Window.Resources>
+    
+    <Grid Margin="16" >
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <TextBlock Text="Generate Test"
+                   FontSize="24" FontWeight="SemiBold"
+                   Margin="0,0,0,12"/>
+
+        <!-- Content -->
+        <Grid Grid.Row="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="12"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Test details -->
+            <GroupBox Header="Details" Padding="12">
+                <StackPanel>
+                    <StackPanel Orientation="Vertical" Margin="0,0,0,8">
+                        <TextBlock Text="Test name:"/>
+                        <TextBox Text="{Binding TestName, UpdateSourceTrigger=PropertyChanged}" MinWidth="260"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Vertical">
+                        <TextBlock Text="Date:"/>
+                        <DatePicker SelectedDate="{Binding TestDate, Mode=TwoWay}" SelectedDateFormat="Short"/>
+                    </StackPanel>
+                </StackPanel>
+            </GroupBox>
+
+            <!-- spacing -->
+            <Border Grid.Row="1"/>
+
+            <!-- Templates -->
+            <GroupBox Grid.Row="2" Header="Templates" Padding="12">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <!-- A -->
+                        <RowDefinition Height="12"/>
+                        <!-- separator -->
+                        <RowDefinition Height="Auto"/>
+                        <!-- B -->
+                    </Grid.RowDefinitions>
+
+                    <!-- Template A -->
+                    <StackPanel Grid.Row="0">
+                        <TextBlock Text="Template A" FontWeight="Bold" Margin="0,0,0,8"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" Text="{Binding TemplateAPath}" IsReadOnly="True"/>
+                        <Button Grid.Column="1" Content="Browse…" Margin="8,0,0,0" Command="{Binding BrowseTemplateACommand}"/>
+                        </Grid>
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                            <TextBlock Text="Copies:" VerticalAlignment="Center" Width="70"/>
+                            <TextBox Width="80" HorizontalContentAlignment="Right" Text="{Binding TemplateACount, UpdateSourceTrigger=PropertyChanged, Converter={StaticResource NonNegInt}}"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Separator -->
+                    <Separator Grid.Row="1" Margin="0,8" Background="Blue" Height="10"/>
+
+                    <!-- Template B -->
+                    <StackPanel Grid.Row="2">
+                        <TextBlock Text="Template B" FontWeight="Bold" Margin="0,0,0,8"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" Text="{Binding TemplateBPath}" IsReadOnly="True"/>
+                            <Button Grid.Column="1" Content="Browse…" Margin="8,0,0,0" Command="{Binding BrowseTemplateBCommand}"/>
+                        </Grid>
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                            <TextBlock Text="Copies:" VerticalAlignment="Center" Width="70"/>
+                            <TextBox Width="80" HorizontalContentAlignment="Right" Text="{Binding TemplateBCount, UpdateSourceTrigger=PropertyChanged, Converter={StaticResource NonNegInt}}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </GroupBox>
+        </Grid>
+
+        <!-- Footer buttons -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" >
+            <Button Content="Export" Width="110" Height="32" Margin="0,12,8,0" IsDefault="True" Command="{Binding ExportCommand}"/>
+        </StackPanel>
+    </Grid>
+</Window>

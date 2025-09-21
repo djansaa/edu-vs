@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace EduVS.Resources
+namespace EduVS.Helpers
 {
-    internal class Resource
+    internal class QrCodeManager
     {
     }
 }
