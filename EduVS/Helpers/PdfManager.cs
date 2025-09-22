@@ -1,7 +1,7 @@
 ﻿using PdfSharp.Drawing;
-using PdfSharp.Fonts;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
+using System.IO;
 
 namespace EduVS.Helpers
 {
@@ -44,13 +44,14 @@ namespace EduVS.Helpers
                 throw new ArgumentException("Template B count is invalid.", nameof(templateBCount));
             }
 
+            // qr code manager
+            QrCodeManager qrCodeManager = new QrCodeManager();
+
             // document builder
             using var dst = new PdfDocument();
             dst.Info.Title = $"{testName}";
             dst.Info.Author = "EduVS";
 
-            //var fontReg = builder.AddTrueTypeFont(EmbeddedResourceLoader.LoadEmbeddedFont("resources.DejaVuSans.ttf"));
-            //var fontBold = builder.AddTrueTypeFont(EmbeddedResourceLoader.LoadEmbeddedFont("resources.DejaVuSans-Bold.ttf"));
             // fonts
             var fontOpts = new XPdfFontOptions(PdfFontEncoding.Unicode);
             var fontBold = new XFont("DejaVu Sans", 10, XFontStyleEx.Bold, fontOpts);
@@ -74,7 +75,7 @@ namespace EduVS.Helpers
                         PdfPage page = dst.AddPage(src.Pages[p]);
 
                         // clear annotation
-                        page.Annotations.Clear();
+                        //page.Annotations.Clear();
 
                         XUnit w = page.Width;
                         XUnit h = page.Height;
@@ -102,9 +103,24 @@ namespace EduVS.Helpers
                             gfx.DrawString(testName, fontBoldBigger, XBrushes.Black,  new XPoint(centerX, top + 90), XStringFormats.Center);
                         }
 
-                        // qr code rectrangle
+                        // ##################### QR CODE #####################
+
+                        // qr code data
+                        var qrData = $"{testCount}|{groupLetter}|{testName}|{testDate}|{p}";
+
+                        int dpi = 300;
+                        int pxSize = (int)Math.Round(Math.Min(qrSize, qrSize) * dpi / 72.0);
+                        int ppm = Math.Max(4, pxSize / 33);
+
+                        // create qr code png
+                        var png = qrCodeManager.CreateQrPng(qrData);
+                        using var ms = new MemoryStream(png);
+                        using var img = XImage.FromStream(ms);
+
                         var qrRect = new XRect(w - margin - qrSize, top, qrSize, qrSize);
-                        gfx.DrawRectangle(XPens.Black, qrRect);
+
+                        // draw qr code
+                        gfx.DrawImage(img, qrRect);
                     }
                 }
             }

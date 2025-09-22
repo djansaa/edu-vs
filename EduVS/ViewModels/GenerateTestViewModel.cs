@@ -100,10 +100,9 @@ namespace EduVS.ViewModels
 
             if (summary == MessageBoxResult.No) return;
 
-            // TODO: pdf -> add header (test name, student name, date, group)
+            // create PDF
             var pdfManager = new PdfManager();
             pdfManager.GenerateTestPrintTemplate(outputPath, TestName, TestDate.ToString("yyyy-MM-dd"), TemplateAPath, TemplateACount, TemplateBPath, TemplateBCount);
-            // TODO: pdf -> add qr code (test name, test date, group, id 1,2,3..., page number 1,2...)
         }
     }
 }
