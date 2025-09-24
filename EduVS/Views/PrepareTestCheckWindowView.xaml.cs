@@ -15,11 +15,11 @@ using System.Windows.Shapes;
 namespace EduVS.Views
 {
     /// <summary>
-    /// Interaction logic for ProcessTestWindowView.xaml
+    /// Interaction logic for PrepareTestCheckWindowView.xaml
     /// </summary>
-    public partial class ProcessTestWindowView : Window
+    public partial class PrepareTestCheckWindowView : Window
     {
-        public ProcessTestWindowView()
+        public PrepareTestCheckWindowView()
         {
             InitializeComponent();
         }

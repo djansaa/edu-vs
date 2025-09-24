@@ -19,7 +19,7 @@
     <Compile Update="Views\GenerateTestWindowView.xaml.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Update="Views\ProcessTestWindowView.xaml.cs">
+    <Compile Update="Views\PrepareTestCheckWindowView.xaml.cs">
       <SubType>Code</SubType>
     </Compile>
     <Compile Update="Views\TestsView.xaml.cs">

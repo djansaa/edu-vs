@@ -8,9 +8,9 @@ using System.Threading.Tasks;
 
 namespace EduVS.ViewModels
 {
-    internal class ProcessTestViewModel : BaseViewModel
+    internal class PrepareTestCheckViewModel : BaseViewModel
     {
-        public ProcessTestViewModel(ILogger logger, AppDbContext db) : base(logger, db)
+        public PrepareTestCheckViewModel(ILogger logger, AppDbContext db) : base(logger, db)
         {
         }
     }

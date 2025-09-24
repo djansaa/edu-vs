@@ -10,7 +10,7 @@ namespace EduVS.Helpers
     {
         public QrCodeManager() { }
 
-        public byte[] CreateQrPng(string data, int sizePx = 300, int marginModules = 4)
+        public byte[] CreateQrPng(string data, int sizePx = 300, int marginModules = 5)
         {
             if (string.IsNullOrWhiteSpace(data)) throw new ArgumentException("Data for QR code cannot be null or empty.", nameof(data));
             if (sizePx < 16) sizePx = 16;
@@ -25,7 +25,7 @@ namespace EduVS.Helpers
                     Margin = marginModules,
                     ErrorCorrection = ErrorCorrectionLevel.M,
                     CharacterSet = "UTF-8",
-                    QrVersion = 0
+                    QrVersion = null
                 }
             };
 

@@ -35,12 +35,12 @@ namespace EduVS.ViewModels
                 window.ShowDialog();
             });
 
-            // show process test window
+            // show prepare test check window
             ShowProcessTestWindowCommand = new RelayCommand(() =>
             {
-                var window = new Views.ProcessTestWindowView
+                var window = new Views.PrepareTestCheckWindowView
                 {
-                    DataContext = new ProcessTestViewModel(_logger, _db)
+                    DataContext = new PrepareTestCheckViewModel(_logger, _db)
                 };
                 window.ShowDialog();
             });
