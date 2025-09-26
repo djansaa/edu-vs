@@ -15,7 +15,7 @@ namespace EduVS.ViewModels
         public IRelayCommand ShowTestsCommand { get; }
         public IRelayCommand ShowClassesCommand { get; }
         public IRelayCommand ShowGenerateTestWindowCommand { get; }
-        public IRelayCommand ShowProcessTestWindowCommand { get; }
+        public IRelayCommand ShowPrepareTestCheckWindowCommand { get; }
 
         public MainViewModel(ILogger<MainViewModel> logger, AppDbContext db, TestsViewModel testsVm, ClassesViewModel classesVm) : base(logger, db)
         {
@@ -36,7 +36,7 @@ namespace EduVS.ViewModels
             });
 
             // show prepare test check window
-            ShowProcessTestWindowCommand = new RelayCommand(() =>
+            ShowPrepareTestCheckWindowCommand = new RelayCommand(() =>
             {
                 var window = new Views.PrepareTestCheckWindowView
                 {

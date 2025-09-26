@@ -6,7 +6,71 @@
         xmlns:local="clr-namespace:EduVS.Views"
         mc:Ignorable="d"
         Title="PrepareTestCheckWindowView" Height="450" Width="800">
-    <Grid>
-        
+    <Grid Margin="16" >
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="12"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="12"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Source PDF -->
+        <GroupBox Header="Source PDF" Grid.Row="0" Padding="12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBox Grid.Column="0"
+                         Text="{Binding PdfPath}"
+                         IsReadOnly="True"
+                         VerticalContentAlignment="Center"
+                         MinWidth="360"/>
+                <Button Grid.Column="1" Content="Browse…"
+                        Margin="8,0,0,0"
+                        Width="100"
+                        Command="{Binding BrowsePdfCommand}"/>
+            </Grid>
+        </GroupBox>
+
+        <!-- spacing -->
+        <Border Grid.Row="1"/>
+
+        <!-- Output mode -->
+        <GroupBox Header="Output mode" Grid.Row="2" Padding="12">
+            <StackPanel>
+                <RadioButton Content="Split output into separate PDFs by group (A.pdf, B.pdf)"
+                             IsChecked="{Binding IsSplitByGroup, Mode=TwoWay}"/>
+                <RadioButton Content="Merge output into a single PDF"
+                             IsChecked="{Binding IsMergedSingle, Mode=TwoWay}"/>
+            </StackPanel>
+        </GroupBox>
+
+        <!-- spacing -->
+        <Border Grid.Row="3"/>
+
+        <!-- Sorting -->
+        <GroupBox Header="Page sorting in output" Grid.Row="4" Padding="12">
+            <StackPanel>
+                <RadioButton Content="Sort by page number (1, 1, 1, 2, 2, 2 ...)"
+                             IsChecked="{Binding SortByPageNumber, Mode=TwoWay}"/>
+                <RadioButton Content="Sort by test number (first page, second page, first page ...)"
+                             IsChecked="{Binding SortByTestNumber, Mode=TwoWay}"/>
+            </StackPanel>
+        </GroupBox>
+
+        <!-- filler -->
+        <Border Grid.Row="5"/>
+
+        <!-- Footer -->
+        <StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Export" Width="110" Height="32" Margin="0,12,8,0"
+                    IsDefault="True"
+                    Command="{Binding ExportCommand}"/>
+        </StackPanel>
     </Grid>
 </Window>

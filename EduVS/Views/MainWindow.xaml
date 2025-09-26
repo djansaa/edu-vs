@@ -9,7 +9,7 @@
         Title="EduVS" Height="450" Width="800">
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="100" MinWidth="100"/>
+            <ColumnDefinition Width="120" MinWidth="120"/>
             <ColumnDefinition Width="5"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
@@ -30,7 +30,8 @@
             <Separator Margin="0,10" Visibility="Collapsed"/>
             <Button Content="Create new test" Command="{Binding ShowGenerateTestWindowCommand}"/>
             <Separator Margin="0,10"/>
-            <Button Content="Process test" Command="{Binding ShowProcessTestWindowCommand}"/>
+            <Button Content="Prepare test check" Command="{Binding ShowPrepareTestCheckWindowCommand}"/>
+            <Separator Margin="0,10"/>
         </StackPanel>
 
         <GridSplitter Grid.Column="1"
