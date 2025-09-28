@@ -3,15 +3,10 @@ using CommunityToolkit.Mvvm.Input;
 using EduVS.Data;
 using EduVS.Helpers;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace EduVS.ViewModels
 {
-    internal partial class PrepareTestCheckViewModel : BaseViewModel
+    public partial class PrepareTestCheckViewModel : BaseViewModel
     {
         [ObservableProperty] private string? pdfPath;
 
@@ -27,7 +22,7 @@ namespace EduVS.ViewModels
         public RelayCommand BrowsePdfCommand { get; }
         public RelayCommand ExportCommand { get; }
 
-        public PrepareTestCheckViewModel(ILogger logger, AppDbContext db) : base(logger, db)
+        public PrepareTestCheckViewModel(ILogger<PrepareTestCheckViewModel> logger, AppDbContext db) : base(logger, db)
         {
             BrowsePdfCommand = new RelayCommand(BrowsePdf);
             ExportCommand = new RelayCommand(ExportTestCheck);
@@ -45,5 +40,6 @@ namespace EduVS.ViewModels
         {
             throw new NotImplementedException();
         }
+
     }
 }

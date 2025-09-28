@@ -3,12 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using EduVS.Data;
 using EduVS.Models;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 
 namespace EduVS.ViewModels
@@ -31,7 +26,7 @@ namespace EduVS.ViewModels
         public IRelayCommand AddNewClassCommand { get; }
         public IRelayCommand ClearNewClassCommand { get; }
 
-        public ClassesViewModel(ILogger<TestsViewModel> logger, AppDbContext db) : base(logger, db)
+        public ClassesViewModel(ILogger<ClassesViewModel> logger, AppDbContext db) : base(logger, db)
         {
             LoadClassesCommand = new AsyncRelayCommand(LoadClassesAsync);
             CancelSelectedClassCommand = new RelayCommand(CancelSelectedClass);

@@ -1,4 +1,5 @@
 ﻿using EduVS.Data;
+using EduVS.Helpers;
 using EduVS.ViewModels;
 using EduVS.Views;
 using Microsoft.EntityFrameworkCore;
@@ -61,10 +62,18 @@ namespace EduVS
                         opts.UseSqlite(cfg.GetConnectionString("Default"));
                     });
 
-                    services.AddScoped<TestsViewModel>();
-                    services.AddScoped<ClassesViewModel>();
+                    // view models
                     services.AddScoped<MainViewModel>();
+                    services.AddScoped<GenerateTestViewModel>();
+                    services.AddScoped<PrepareTestCheckViewModel>();
+
+                    // view
                     services.AddScoped<MainWindow>();
+                    services.AddTransient<GenerateTestWindowView>();
+                    services.AddTransient<PrepareTestCheckWindowView>();
+
+                    // other
+                    // services.AddSingleton<PdfManager>();
                 })
                 .Build();
         }

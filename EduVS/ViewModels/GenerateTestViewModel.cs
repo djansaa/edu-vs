@@ -8,7 +8,7 @@ using System.Windows;
 
 namespace EduVS.ViewModels
 {
-    internal partial class GenerateTestViewModel : BaseViewModel
+    public partial class GenerateTestViewModel : BaseViewModel
     {
         [ObservableProperty] private string? testName;
         [ObservableProperty] private DateTime testDate;
@@ -23,7 +23,7 @@ namespace EduVS.ViewModels
         public RelayCommand BrowseTemplateBCommand { get; }
         public RelayCommand ExportCommand { get; }
 
-        public GenerateTestViewModel(ILogger logger, AppDbContext db) : base(logger, db)
+        public GenerateTestViewModel(ILogger<GenerateTestViewModel> logger, AppDbContext db) : base(logger, db)
         {
             TestDate = DateTime.Today;
 

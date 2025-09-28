@@ -103,7 +103,7 @@ namespace EduVS.Helpers
                             gfx.DrawString(groupLetter, fontBoldBigger, XBrushes.Black, new XPoint(centerX, top + 55), XStringFormats.Center);
 
                             // test name
-                            gfx.DrawString(testName, fontBoldBigger, XBrushes.Black,  new XPoint(centerX, top + 75), XStringFormats.Center);
+                            gfx.DrawString($"{testName} ({testCount})", fontBoldBigger, XBrushes.Black,  new XPoint(centerX, top + 75), XStringFormats.Center);
                         }
 
                         // ##################### QR CODE #####################
