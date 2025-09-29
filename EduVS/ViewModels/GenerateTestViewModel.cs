@@ -103,6 +103,8 @@ namespace EduVS.ViewModels
             // create PDF
             var pdfManager = new PdfManager();
             pdfManager.GenerateTestPrintTemplate(outputPath, TestName, TestDate.ToString("yyyy-MM-dd"), TemplateAPath, TemplateACount, TemplateBPath, TemplateBCount);
+
+            MessageBox.Show("Test PDF generated successfully.", "Export Complete", MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
 }

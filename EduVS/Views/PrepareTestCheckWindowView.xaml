@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:EduVS.Views"
         mc:Ignorable="d"
-        Title="PrepareTestCheckWindowView" Height="450" Width="800">
+        Title="PrepareTestCheckWindowView" Height="500" Width="800">
     <Grid Margin="16" >
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -63,8 +63,68 @@
             </StackPanel>
         </GroupBox>
 
-        <!-- filler -->
-        <Border Grid.Row="5"/>
+        <GroupBox Header="Output PDFs" Grid.Row="5" Padding="12">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="8"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- PdfA -->
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="PDF A:" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                <TextBox   Grid.Row="0" Grid.Column="1"
+                   Text="{Binding PdfPathA}"
+                   IsReadOnly="True"
+                   VerticalContentAlignment="Center"
+                   MinWidth="360"/>
+                <Button    Grid.Row="0" Grid.Column="2"
+                   Content="Browse…"
+                   Margin="8,0,0,0"
+                   Width="100"
+                   Command="{Binding BrowsePdfANewCommmand}"/>
+
+                <!-- spacer -->
+                <Border Grid.Row="1"/>
+
+                <!-- PdfB (disabled when IsMergedSingle == true) -->
+                <Grid Grid.Row="2" Grid.ColumnSpan="3">
+                    <Grid.Style>
+                        <Style TargetType="Grid">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsMergedSingle}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Grid.Style>
+
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" Text="PDF B:" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                    <TextBox   Grid.Column="1"
+                         Text="{Binding PdfPathB}"
+                         IsReadOnly="True"
+                         VerticalContentAlignment="Center"
+                         MinWidth="360"/>
+                    <Button    Grid.Column="2"
+                         Content="Browse…"
+                         Margin="8,0,0,0"
+                         Width="100"
+                         Command="{Binding BrowsePdfBNewCommmand}"/>
+                </Grid>
+            </Grid>
+        </GroupBox>
 
         <!-- Footer -->
         <StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Right">
