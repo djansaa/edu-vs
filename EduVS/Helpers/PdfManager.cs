@@ -6,7 +6,9 @@ using PDFtoImage;
 using SkiaSharp;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
+using System.Runtime.Intrinsics.Arm;
 using ZXing;
 using ZXing.Common;
 using ZXing.Windows.Compatibility;
@@ -205,6 +207,10 @@ namespace EduVS.Helpers
                     {
                         Debug.WriteLine($"Page: {i + 1} - QR code not found -> rotating 180 degrees.");
                         using var full180 = RotateBitmap180(full);
+                        rotate = 180;
+                        // save img full180
+                        //full180.Save(@$"C:\Users\David\Downloads\page_{i}_rotated.png", ImageFormat.Png);
+
                         qr = TryDecodeTopRight(reader, full180);
                     }
                 }
@@ -212,7 +218,7 @@ namespace EduVS.Helpers
                 if (qr == null)
                 {
                     // QR code not found even after rotation
-                    Debug.WriteLine($"Page: {i + 1} - QR code not found.");
+                    Debug.WriteLine($"Page: {i} - QR code not found.");
                     continue;
                 }
 
@@ -220,40 +226,60 @@ namespace EduVS.Helpers
                 QrCodeData qcd = QrCodeData.Parse(qr);
 
                 // make tuple made of QrCodeData and pdf page
-                Debug.WriteLine($"Page: {i + 1} - QR code found: TestId={qcd.TestId}, GroupId={qcd.GroupId}, TestName={qcd.TestName}, TestDate={qcd.TestDate:yyyy-MM-dd}, Page={qcd.Page}");
+                Debug.WriteLine($"Page: {i} - QR code found: TestId={qcd.TestId}, GroupId={qcd.GroupId}, TestName={qcd.TestName}, TestDate={qcd.TestDate:yyyy-MM-dd}, Page={qcd.Page}");
 
                 outputPagesData.Add((i, rotate, qcd));
             }
 
-            // destination docs
-            using var merged = new PdfDocument();
-            using var outA = new PdfDocument();
-            using var outB = new PdfDocument();
+            // ================== CREATE OUTPUT PDFS ==================
+            // SORTING
+            // sort by page number
+            if (sortByPageNumber)
+            {
+                outputPagesData = outputPagesData.OrderBy(t => t.qr.Page).ThenBy(t => t.qr.TestId).ToList();
+            } 
+            // sort by test number
+            else if (sortByTestNumber)
+            {
+                outputPagesData = outputPagesData.OrderBy(t => t.qr.TestId).ThenBy(t => t.qr.Page).ToList();
+            }
 
             // SPLIT PAGES BY
-
-            if (isMergedSingle)
-            {
-                merged.AddPage(newPage);
-                pagesMerged.Add((merged.Pages[merged.PageCount - 1], i));
-            }
-
+            // groups A and B
             if (isSplitByGroup)
             {
-                var group = ParseGroupFromQr(qr); // 'A', 'B' nebo null
-                if (group == 'B')
-                {
-                    outB.AddPage(newPage);
-                    pagesB.Add((outB.Pages[outB.PageCount - 1], i));
-                }
-                else
-                {
-                    outA.AddPage(newPage);
-                    pagesA.Add((outA.Pages[outA.PageCount - 1], i));
-                }
+                var pagesA = outputPagesData.Where(t => t.qr.GroupId == 'A').ToList();
+                var pagesB = outputPagesData.Where(t => t.qr.GroupId == 'B').ToList();
+
+                // copy pages to output pdfs
+                CopyTestCheckPages(src, outputPathA, pagesA);
+                CopyTestCheckPages(src, outputPathB, pagesB);
+            }
+            // merged
+            else if (isMergedSingle)
+            {
+                var pagesMarged = outputPagesData.ToList();
+                CopyTestCheckPages(src, outputPathA, pagesMarged);
+            }
+        }
+
+        private void CopyTestCheckPages(PdfDocument src, string outputPath, IEnumerable<(int pageId, int rotation, QrCodeData qr)> tcp)
+        {
+            if (string.IsNullOrEmpty(outputPath)) throw new ArgumentException("Output path is null or empty.", nameof(outputPath));
+            if (tcp == null) return;
+
+            using var dst = new PdfDocument();
+
+            // for each page, apply rotation and add to destination
+            foreach (var (pageId, rotation, qr) in tcp)
+            {
+                var newPage = src.Pages[pageId];
+                if (rotation != 0) newPage.Rotate = NormalizeRotate(newPage.Rotate + rotation);
+                dst.AddPage(newPage);
             }
 
-            // SORTING
+            // export pdf
+            dst.Save(outputPath);
         }
 
         private string? TryDecodeTopRight(BarcodeReader reader, Bitmap full, float relW = 0.45f, float relH = 0.45f)
@@ -265,7 +291,8 @@ namespace EduVS.Helpers
 
         private SKBitmap PdfPageToSKBitmap(string pdfPath, int pageIndex)
         {
-            return Conversion.ToImage(pdfPath, pageIndex);
+            using var fs = File.OpenRead(pdfPath);
+            return Conversion.ToImage(fs, pageIndex);
         }
 
         private Bitmap SKBitmapToBitmap(SKBitmap skb)
@@ -286,34 +313,30 @@ namespace EduVS.Helpers
 
         private Bitmap RotateBitmap180(Bitmap src)
         {
-            var dest = new Bitmap(src.Height, src.Width, src.PixelFormat);
+            var dest = new Bitmap(src.Width, src.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            dest.SetResolution(src.HorizontalResolution, src.VerticalResolution);
+
             using var g = Graphics.FromImage(dest);
-            g.Clear(Color.White);
-            g.TranslateTransform(dest.Width / 2f, dest.Height / 2f);
+            g.TranslateTransform(src.Width / 2f, src.Height / 2f);
             g.RotateTransform(180f);
             g.TranslateTransform(-src.Width / 2f, -src.Height / 2f);
-            g.DrawImageUnscaled(src, 0, 0);
+            g.DrawImage(src, 0, 0, src.Width, src.Height);
             return dest;
         }
 
-        private string? DecodeQrTopRight(string pdfPath, int pageIndex)
-        {
-            using var sk = PdfPageToSKBitmap(pdfPath, pageIndex);
-            using var full = SKBitmapToBitmap(sk);
-            var roi = CropTopRight(full, 0.45f, 0.45f);
-            try
-            {
-                var reader = new ZXing.Windows.Compatibility.BarcodeReader
-                {
-                    AutoRotate = false,
-                    Options = new DecodingOptions { TryHarder = true, PossibleFormats = new[] { BarcodeFormat.QR_CODE }}
-                };
-                var r = reader.Decode(roi);
-                return r?.Text;
-            }
-            finally { roi.Dispose(); }
-        }
-
         private int NormalizeRotate(int deg) => ((deg % 360) + 360) % 360 switch { 0 => 0, 90 => 90, 180 => 180, 270 => 270, _ => 0 };
+
+        public void GenerateTestResults(string inputPath)
+        {
+            // validate inputs
+            if (string.IsNullOrEmpty(inputPath) || !File.Exists(inputPath))
+            {
+                throw new ArgumentException("Input PDF path is invalid.", nameof(inputPath));
+            }
+
+            // split pdfs by test IDS
+            // then for each test - try OCR name in box
+            // based on name -> rename exported pdfs files
+        }
     }
 }
