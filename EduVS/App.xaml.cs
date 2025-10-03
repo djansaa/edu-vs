@@ -64,11 +64,13 @@ namespace EduVS
                     services.AddScoped<MainViewModel>();
                     services.AddScoped<GenerateTestViewModel>();
                     services.AddScoped<PrepareTestCheckViewModel>();
+                    services.AddScoped<GenerateTestResultsViewModel>();
 
                     // view
                     services.AddScoped<MainWindow>();
                     services.AddTransient<GenerateTestWindowView>();
                     services.AddTransient<PrepareTestCheckWindowView>();
+                    services.AddTransient<GenerateTestResultsWindowView>();
 
                     // other
                     // services.AddSingleton<PdfManager>();
