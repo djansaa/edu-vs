@@ -17,6 +17,30 @@ namespace EduVS.Helpers
             return ok == true ? dlg.FileName : null;
         }
 
+        public static IEnumerable<string> PickPdfs()
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog
+            {
+                Filter = "PDF files (*.pdf)|*.pdf",
+                DefaultExt = ".pdf",
+                Multiselect = true
+            };
+            bool? ok = dlg.ShowDialog();
+            return ok == true ? dlg.FileNames : Enumerable.Empty<string>();
+        }
+
+        public static string? PickCsv()
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog
+            {
+                Filter = "CSV files (*.csv)|*.csv",
+                DefaultExt = ".csv",
+                Multiselect = false
+            };
+            bool? ok = dlg.ShowDialog();
+            return ok == true ? dlg.FileName : null;
+        }
+
         public static string? PickFolder()
         {
             var dlg = new OpenFolderDialog

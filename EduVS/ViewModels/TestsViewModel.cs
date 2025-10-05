@@ -55,7 +55,7 @@ namespace EduVS.ViewModels
             CancelSelectedTestCommand = new RelayCommand(CancelSelectedTest);
             UpdateSelectedTestCommand = new AsyncRelayCommand(UpdateSelectedTestAsync);
             DeleteSelectedTestCommand = new AsyncRelayCommand(DeleteSelectedTest);
-            
+
 
             AddSubjectCommand = new RelayCommand(AddSubject);
             BrowseTemplateACommand = new RelayCommand(BrowseTemplateA);
@@ -120,7 +120,7 @@ namespace EduVS.ViewModels
                 else { TryDeleteDirIfEmpty(dirA); TryDeleteDirIfEmpty(dirB); }
 
                 MessageBox.Show("Test was successfully deleted.", "OK", MessageBoxButton.OK, MessageBoxImage.Information);
-                
+
                 await LoadTestsAsync();
             }
             catch (Exception ex)
@@ -232,7 +232,8 @@ namespace EduVS.ViewModels
 
                 await LoadTestsAsync();
 
-            } catch (Exception ex)
+            }
+            catch (Exception ex)
             {
                 Log.Error(ex, "UpdateSelectedTest failed");
 

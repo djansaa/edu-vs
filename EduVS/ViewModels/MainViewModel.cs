@@ -46,9 +46,16 @@ namespace EduVS.ViewModels
                 win.ShowDialog();
             });
 
-
             // default view
             //CurrentViewModel = testsVm;
+        }
+
+        [RelayCommand]
+        public void ShowGenerateTestResultsWindow()
+        {
+            var win = _sp.GetRequiredService<GenerateTestResultsWindowView>();
+            win.Owner = Application.Current.MainWindow;
+            win.ShowDialog();
         }
     }
 }

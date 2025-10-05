@@ -1,5 +1,4 @@
 ﻿using EduVS.Data;
-using EduVS.Helpers;
 using EduVS.ViewModels;
 using EduVS.Views;
 using Microsoft.EntityFrameworkCore;
@@ -8,8 +7,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using PdfSharp.Fonts;
 using Serilog;
-using System.Diagnostics;
 using System.IO;
+using System.Text;
 using System.Windows;
 
 namespace EduVS
@@ -30,7 +29,10 @@ namespace EduVS
             //Debug.WriteLine($"{s0}: {r.Rotation}");
 
             // GLOBAL SETTINGS
+            // font for PDFs
             GlobalFontSettings.FontResolver ??= new DejaVuFontResolver();
+            // encoding (for windows-1250)
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
             // SERILOG
             Log.Logger = new LoggerConfiguration()

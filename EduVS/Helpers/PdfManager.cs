@@ -6,9 +6,8 @@ using PDFtoImage;
 using SkiaSharp;
 using System.Diagnostics;
 using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
-using System.Runtime.Intrinsics.Arm;
+using System.Windows.Media.Imaging;
 using ZXing;
 using ZXing.Common;
 using ZXing.Windows.Compatibility;
@@ -17,7 +16,8 @@ namespace EduVS.Helpers
 {
     internal class PdfManager
     {
-        public PdfManager() {
+        public PdfManager()
+        {
 
         }
 
@@ -113,13 +113,13 @@ namespace EduVS.Helpers
                             gfx.DrawString(groupLetter, fontBoldBigger, XBrushes.Black, new XPoint(centerX, top + 55), XStringFormats.Center);
 
                             // test name
-                            gfx.DrawString($"{testName} ({testCount})", fontBoldBigger, XBrushes.Black,  new XPoint(centerX, top + 75), XStringFormats.Center);
+                            gfx.DrawString($"{testName} ({testCount})", fontBoldBigger, XBrushes.Black, new XPoint(centerX, top + 75), XStringFormats.Center);
                         }
 
                         // ##################### QR CODE #####################
 
                         // qr code data
-                        var qrData = $"TESTID:{testCount}|GROUPID:{groupLetter}|TESTNAME:{testName}|TESTDATE:{testDate}|PAGE:{p+1}";
+                        var qrData = $"TESTID:{testCount}|GROUPID:{groupLetter}|TESTNAME:{testName}|TESTDATE:{testDate}|PAGE:{p + 1}";
 
                         int dpi = 300;
                         int pxSize = (int)Math.Round(Math.Min(qrSize, qrSize) * dpi / 72.0);
@@ -130,7 +130,7 @@ namespace EduVS.Helpers
                         using var ms = new MemoryStream(png);
                         using var img = XImage.FromStream(ms);
 
-                        var qrRect = new XRect(w - margin - qrSize +10, top-10, qrSize, qrSize);
+                        var qrRect = new XRect(w - margin - qrSize + 10, top - 10, qrSize, qrSize);
 
                         // draw qr code
                         gfx.DrawImage(img, qrRect);
@@ -237,7 +237,7 @@ namespace EduVS.Helpers
             if (sortByPageNumber)
             {
                 outputPagesData = outputPagesData.OrderBy(t => t.qr.Page).ThenBy(t => t.qr.TestId).ToList();
-            } 
+            }
             // sort by test number
             else if (sortByTestNumber)
             {
@@ -289,12 +289,6 @@ namespace EduVS.Helpers
             return r?.Text;
         }
 
-        private SKBitmap PdfPageToSKBitmap(string pdfPath, int pageIndex)
-        {
-            using var fs = File.OpenRead(pdfPath);
-            return Conversion.ToImage(fs, pageIndex);
-        }
-
         private Bitmap SKBitmapToBitmap(SKBitmap skb)
         {
             using var img = SKImage.FromPixels(skb.PeekPixels());
@@ -326,17 +320,157 @@ namespace EduVS.Helpers
 
         private int NormalizeRotate(int deg) => ((deg % 360) + 360) % 360 switch { 0 => 0, 90 => 90, 180 => 180, 270 => 270, _ => 0 };
 
-        public void GenerateTestResults(string inputPath)
+        // ================================================ AI =============================================
+
+        public string MergePdfs(IEnumerable<string> inputs, string outputPath)
         {
-            // validate inputs
-            if (string.IsNullOrEmpty(inputPath) || !File.Exists(inputPath))
+            using var dst = new PdfDocument();
+            foreach (var p in inputs.Where(File.Exists))
             {
-                throw new ArgumentException("Input PDF path is invalid.", nameof(inputPath));
+                using var src = PdfReader.Open(p, PdfDocumentOpenMode.Import);
+                for (int i = 0; i < src.PageCount; i++)
+                    dst.AddPage(src.Pages[i]);
+            }
+            dst.Save(outputPath);
+            return outputPath;
+        }
+
+        public (List<TestData> tests, Dictionary<int, List<int>> pagesByTestId)
+            Scan(string combinedPdfPath, RectangleF qrTopRightRel, RectangleF nameBoxTopLeftRel)
+        {
+            var tests = new List<TestData>();
+            var pagesByTest = new Dictionary<int, List<int>>();
+
+            var reader = new ZXing.Windows.Compatibility.BarcodeReader
+            {
+                AutoRotate = false,
+                Options = new DecodingOptions
+                {
+                    TryHarder = true,
+                    PossibleFormats = new[] { BarcodeFormat.QR_CODE },
+                    CharacterSet = "UTF-8"
+                }
+            };
+
+            using var src = PdfReader.Open(combinedPdfPath, PdfDocumentOpenMode.Import);
+            var haveNameBox = new HashSet<int>();
+
+            for (int i = 0; i < src.PageCount; i++)
+            {
+                using var skb = PdfPageToSKBitmap(combinedPdfPath, i);
+
+                // QR z pravého horního rohu (zkus i otočení o 180°)
+                string? qr = TryDecodeQr(reader, skb, qrTopRightRel);
+                if (qr is null)
+                {
+                    using var rot = RotateSK180(skb);
+                    qr = TryDecodeQr(reader, rot, qrTopRightRel);
+                }
+                if (qr is null) continue;
+
+                if (!QrCodeData.TryParse(qr, out var q) || q is null) continue;
+
+                if (!pagesByTest.TryGetValue(q.TestId, out var list))
+                    pagesByTest[q.TestId] = list = new List<int>();
+                list.Add(i);
+
+                if (q.Page == 1 && !haveNameBox.Contains(q.TestId))
+                {
+                    var nb = CropRelToBitmapSource(skb, nameBoxTopLeftRel);
+                    tests.Add(new TestData { TestId = q.TestId, NameBoxBitmap = nb });
+                    haveNameBox.Add(q.TestId);
+                }
             }
 
-            // split pdfs by test IDS
-            // then for each test - try OCR name in box
-            // based on name -> rename exported pdfs files
+            // sort pages
+            foreach (var k in pagesByTest.Keys.ToList())
+                pagesByTest[k] = pagesByTest[k].Distinct().OrderBy(x => x).ToList();
+
+            // sort tests by id
+            tests = tests.OrderBy(t => t.TestId).ToList();
+
+            return (tests, pagesByTest);
+        }
+
+
+        public void ExportPerStudent(string combinedPdfPath,
+                                     IReadOnlyDictionary<int, List<int>> pagesByTestId,
+                                     IEnumerable<(string name, int testId)> assignments,
+                                     string outputFolder)
+        {
+            Directory.CreateDirectory(outputFolder);
+            using var src = PdfReader.Open(combinedPdfPath, PdfDocumentOpenMode.Import);
+
+            foreach (var (name, testId) in assignments)
+            {
+                if (!pagesByTestId.TryGetValue(testId, out var pages) || pages.Count == 0) continue;
+
+                using var dst = new PdfDocument();
+                foreach (var p in pages) dst.AddPage(src.Pages[p]);
+
+                var file = Path.Combine(outputFolder, $"{Safe(name)}_Test_{testId}.pdf");
+                dst.Save(file);
+            }
+        }
+
+
+        static string Safe(string s)
+        {
+            foreach (var ch in Path.GetInvalidFileNameChars()) s = s.Replace(ch, '_');
+            return s.Trim();
+        }
+
+        static SKBitmap PdfPageToSKBitmap(string pdfPath, int pageIndex)
+        {
+            using var fs = File.OpenRead(pdfPath);
+            return Conversion.ToImage(fs, pageIndex);
+        }
+
+        static string? TryDecodeQr(ZXing.Windows.Compatibility.BarcodeReader reader, SKBitmap src, RectangleF rel)
+        {
+            using var crop = CropRelShared(src, rel);
+            using var img = SKImage.FromPixels(crop.PeekPixels());
+            using var data = img.Encode(SKEncodedImageFormat.Png, 100);
+            using var ms = new MemoryStream(data.ToArray());
+            using var bmp = (System.Drawing.Bitmap)System.Drawing.Image.FromStream(ms);
+            return reader.Decode(bmp)?.Text;
+        }
+
+        static SKBitmap CropRelShared(SKBitmap src, RectangleF rel)
+        {
+            int x = Math.Clamp((int)(src.Width * rel.X), 0, Math.Max(0, src.Width - 1));
+            int y = Math.Clamp((int)(src.Height * rel.Y), 0, Math.Max(0, src.Height - 1));
+            int w = Math.Clamp((int)(src.Width * rel.Width), 1, src.Width - x);
+            int h = Math.Clamp((int)(src.Height * rel.Height), 1, src.Height - y);
+
+            var subset = new SKBitmap();
+            if (!src.ExtractSubset(subset, new SKRectI(x, y, x + w, y + h)))
+                throw new InvalidOperationException("ExtractSubset failed.");
+            return subset; // ⚠️ depends on src's pixel memory
+        }
+
+        static SKBitmap RotateSK180(SKBitmap src)
+        {
+            var dst = new SKBitmap(src.Width, src.Height, src.ColorType, src.AlphaType);
+            using var canvas = new SKCanvas(dst);
+            canvas.Translate(src.Width, src.Height);
+            canvas.RotateDegrees(180);
+            canvas.DrawBitmap(src, 0, 0);
+            return dst;
+        }
+
+        static BitmapSource CropRelToBitmapSource(SKBitmap src, RectangleF rel)
+        {
+            using var crop = CropRelShared(src, rel);
+            using var img = SKImage.FromPixels(crop.PeekPixels());
+            using var data = img.Encode(SKEncodedImageFormat.Png, 100);
+            var bi = new BitmapImage();
+            bi.BeginInit();
+            bi.CacheOption = BitmapCacheOption.OnLoad;
+            bi.StreamSource = new MemoryStream(data.ToArray());
+            bi.EndInit();
+            bi.Freeze();
+            return bi;
         }
     }
 }

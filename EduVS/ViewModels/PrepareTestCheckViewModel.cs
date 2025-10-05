@@ -35,7 +35,7 @@ namespace EduVS.ViewModels
             BrowsePdfANewCommmand = new RelayCommand(BrowsePdfANew);
             BrowsePdfBNewCommmand = new RelayCommand(BrowsePdfBNew);
             ExportCommand = new RelayCommand(ExportTestCheck);
-            
+
         }
 
         private void BrowsePdf()

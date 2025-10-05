@@ -1,16 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using EduVS.ViewModels;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 
 namespace EduVS.Views
 {
@@ -19,7 +8,7 @@ namespace EduVS.Views
     /// </summary>
     public partial class GenerateTestResultsWindowView : Window
     {
-        public GenerateTestResultsWindowView(GenerateTestResultsWindowView vm)
+        public GenerateTestResultsWindowView(GenerateTestResultsViewModel vm)
         {
             InitializeComponent();
             DataContext = vm;

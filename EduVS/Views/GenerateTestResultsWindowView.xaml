@@ -5,8 +5,207 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:EduVS.Views"
         mc:Ignorable="d"
-        Title="GenerateTestResultsWindowView" Height="450" Width="800">
-    <Grid>
-        
+        Title="Export Test Results" Height="800" Width="920"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.Resources>
+        <!-- Disabled when IsStarted == true -->
+        <Style x:Key="DisableWhenStarted" TargetType="Button">
+            <Setter Property="IsEnabled" Value="True"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsStarted}" Value="True">
+                    <Setter Property="IsEnabled" Value="False"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Enabled when IsStarted == true -->
+        <Style x:Key="EnableWhenStarted" TargetType="Button">
+            <Setter Property="IsEnabled" Value="False"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsStarted}" Value="True">
+                    <Setter Property="IsEnabled" Value="True"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <TextBlock Text="Export Test Results"
+                   FontSize="24" FontWeight="SemiBold"
+                   Margin="0,0,0,12"/>
+
+        <!-- Content -->
+        <Grid Grid.Row="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <!-- Files -->
+                <RowDefinition Height="12"/>
+                <RowDefinition Height="Auto"/>
+                <!-- START -->
+                <RowDefinition Height="12"/>
+                <RowDefinition Height="Auto"/>
+                <!-- Workspace -->
+                <RowDefinition Height="12"/>
+                <RowDefinition Height="*"/>
+                <!-- Preview -->
+            </Grid.RowDefinitions>
+
+            <!-- FILES -->
+            <GroupBox Header="Files" Padding="12">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <!-- PDFs -->
+                        <RowDefinition Height="12"/>
+                        <!-- spacing -->
+                        <RowDefinition Height="Auto"/>
+                        <!-- CSV -->
+                    </Grid.RowDefinitions>
+
+                    <!-- PDFs -->
+                    <StackPanel Grid.Row="0">
+                        <TextBlock Text="Checked PDFs:" FontWeight="Bold"/>
+                        <Grid Margin="4,6,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <ListBox Grid.Column="0" ItemsSource="{Binding SelectedPdfPaths}" Height="100"/>
+                            <Button Grid.Column="1"
+                                    Content="Browse PDFs…"
+                                    Margin="8,0,0,0"
+                                    Command="{Binding BrowsePdfsCommand}"
+                                    Style="{StaticResource DisableWhenStarted}"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- spacing -->
+                    <Border Grid.Row="1"/>
+
+                    <!-- CSV -->
+                    <StackPanel Grid.Row="2">
+                        <TextBlock Text="Students CSV:" FontWeight="Bold"/>
+                        <Grid Margin="4,6,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0"
+                                     Text="{Binding StudentsCsvPath}"
+                                     IsReadOnly="True"/>
+                            <Button Grid.Column="1"
+                                    Content="Browse Students…"
+                                    Margin="8,0,0,0"
+                                    Command="{Binding BrowseStudentsCsvCommand}"
+                                    Style="{StaticResource DisableWhenStarted}"/>
+                        </Grid>
+                    </StackPanel>
+                </Grid>
+            </GroupBox>
+
+            <!-- spacing -->
+            <Border Grid.Row="1"/>
+
+            <!-- START + ABORT (centered) -->
+            <Grid Grid.Row="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center">
+                    <Button Content="START"
+                Width="120" Height="34"
+                Command="{Binding StartCommand}"
+                Style="{StaticResource DisableWhenStarted}"/>
+                    <Button Content="ABORT"
+                Width="120" Height="34" Margin="12,0,0,0"
+                Command="{Binding AbortCommand}"
+                Style="{StaticResource EnableWhenStarted}"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- spacing -->
+            <Border Grid.Row="3"/>
+
+            <!-- WORKSPACE -->
+            <GroupBox Grid.Row="4" Header="Workspace" Padding="12">
+                <DockPanel>
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="0,0,0,8">
+                        <TextBlock Text="Students:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <ListBox Width="400" Height="100"
+                                 ItemsSource="{Binding Students}"
+                                 SelectedItem="{Binding SelectedStudent, Mode=TwoWay}"
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock>
+                                      <Run Text="{Binding Name}"/>
+                                      <Run Text="{Binding TestId, StringFormat= #{0}, TargetNullValue=''}"/>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <Button Content="Assign" Margin="12,0,0,0" Width="110"
+                                Command="{Binding AssignCommand}"
+                                Style="{StaticResource EnableWhenStarted}"/>
+                    </StackPanel>
+                </DockPanel>
+            </GroupBox>
+
+            <!-- spacing -->
+            <Border Grid.Row="5"/>
+
+            <!-- TEST IDs (left) + PREVIEW (right) -->
+            <Grid Grid.Row="6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="100"/>
+                    <!-- Test IDs -->
+                    <ColumnDefinition Width="12"/>
+                    <!-- spacing -->
+                    <ColumnDefinition Width="*"/>
+                    <!-- Preview -->
+                </Grid.ColumnDefinitions>
+
+                <!-- TEST IDs -->
+                <GroupBox Header="Test IDs" Padding="12" Grid.Column="0">
+                    <ListBox ItemsSource="{Binding Tests}"
+                        SelectedItem="{Binding SelectedTest, Mode=TwoWay}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding TestId}" HorizontalAlignment="Center"/>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </GroupBox>
+
+                <!-- right: Preview -->
+                <GroupBox Header="Preview" Padding="12" Grid.Column="2">
+                    <Border BorderBrush="#DDD" BorderThickness="1"
+            HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                        <Image Source="{Binding SelectedTest.NameBoxBitmap}"
+                        Stretch="Uniform"
+                         HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch"
+                        RenderOptions.BitmapScalingMode="HighQuality"/>
+                    </Border>
+                </GroupBox>
+            </Grid>
+        </Grid>
+
+        <!-- Footer -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Export" Width="110" Height="32" Margin="0,12,0,0"
+                    Command="{Binding ExportCommand}"
+                    Style="{StaticResource EnableWhenStarted}"/>
+        </StackPanel>
     </Grid>
 </Window>

@@ -1,5 +1,5 @@
-﻿using System.Windows;
-using EduVS.ViewModels;
+﻿using EduVS.ViewModels;
+using System.Windows;
 
 namespace EduVS.Views
 {

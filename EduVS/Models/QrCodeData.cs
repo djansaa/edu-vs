@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Globalization;
 
 namespace EduVS.Models
 {
@@ -18,8 +13,7 @@ namespace EduVS.Models
 
         public static QrCodeData Parse(string payload)
         {
-            if (!TryParse(payload, out var data))
-                throw new FormatException("Invalid QR data.");
+            if (!TryParse(payload, out var data)) throw new FormatException("Invalid QR data.");
             return data!;
         }
 
