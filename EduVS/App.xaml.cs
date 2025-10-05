@@ -64,9 +64,9 @@ namespace EduVS
 
                     // view models
                     services.AddScoped<MainViewModel>();
-                    services.AddScoped<GenerateTestViewModel>();
-                    services.AddScoped<PrepareTestCheckViewModel>();
-                    services.AddScoped<GenerateTestResultsViewModel>();
+                    services.AddTransient<GenerateTestViewModel>();
+                    services.AddTransient<PrepareTestCheckViewModel>();
+                    services.AddTransient<GenerateTestResultsViewModel>();
 
                     // view
                     services.AddScoped<MainWindow>();

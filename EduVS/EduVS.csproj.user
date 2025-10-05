@@ -5,6 +5,7 @@
   </PropertyGroup>
   <PropertyGroup>
     <ActiveDebugProfile>Production</ActiveDebugProfile>
+    <_LastSelectedProfileId>D:\Visual studio 2022\repos\EduVS\EduVS\Properties\PublishProfiles\FolderProfile.pubxml</_LastSelectedProfileId>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <DebuggerFlavor>ProjectDebugger</DebuggerFlavor>
