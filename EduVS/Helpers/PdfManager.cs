@@ -359,7 +359,6 @@ namespace EduVS.Helpers
             {
                 using var skb = PdfPageToSKBitmap(combinedPdfPath, i);
 
-                // QR z pravého horního rohu (zkus i otočení o 180°)
                 string? qr = TryDecodeQr(reader, skb, qrTopRightRel);
                 if (qr is null)
                 {
