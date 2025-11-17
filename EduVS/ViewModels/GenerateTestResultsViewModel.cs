@@ -1,6 +1,5 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using EduVS.Data;
 using EduVS.Helpers;
 using EduVS.Models;
 using Microsoft.Extensions.Logging;
@@ -28,7 +27,7 @@ namespace EduVS.ViewModels
         private string? _combinedPdfPath;
         private Dictionary<int, List<int>> _pagesByTestId = new();
 
-        public GenerateTestResultsViewModel(ILogger<GenerateTestResultsViewModel> logger, AppDbContext db) : base(logger, db) { }
+        public GenerateTestResultsViewModel(ILogger<GenerateTestResultsViewModel> logger) : base(logger) { }
 
         [RelayCommand]
         private void BrowsePdfs()

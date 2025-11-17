@@ -1,6 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using EduVS.Data;
+﻿using CommunityToolkit.Mvvm.Input;
 using EduVS.Views;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -12,23 +10,14 @@ namespace EduVS.ViewModels
     {
         private readonly IServiceProvider _sp;
 
-        [ObservableProperty]
-        private ObservableObject? currentViewModel;
-
         public IRelayCommand ShowTestsCommand { get; }
         public IRelayCommand ShowClassesCommand { get; }
         public IRelayCommand ShowGenerateTestWindowCommand { get; }
         public IRelayCommand ShowPrepareTestCheckWindowCommand { get; }
 
-        public MainViewModel(ILogger<MainViewModel> logger, AppDbContext db, IServiceProvider sp) : base(logger, db)
+        public MainViewModel(ILogger<MainViewModel> logger, IServiceProvider sp) : base(logger)
         {
             _sp = sp;
-
-            // show tests
-            ShowTestsCommand = new RelayCommand(() => CurrentViewModel = _sp.GetRequiredService<TestsViewModel>());
-
-            // show classes
-            ShowClassesCommand = new RelayCommand(() => CurrentViewModel = _sp.GetRequiredService<ClassesViewModel>());
 
             // show generate test window
             ShowGenerateTestWindowCommand = new RelayCommand(() =>
@@ -45,9 +34,6 @@ namespace EduVS.ViewModels
                 win.Owner = Application.Current.MainWindow;
                 win.ShowDialog();
             });
-
-            // default view
-            //CurrentViewModel = testsVm;
         }
 
         [RelayCommand]

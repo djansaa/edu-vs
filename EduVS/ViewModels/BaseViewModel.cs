@@ -1,5 +1,4 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
-using EduVS.Data;
 using Microsoft.Extensions.Logging;
 
 namespace EduVS.ViewModels
@@ -7,12 +6,10 @@ namespace EduVS.ViewModels
     public abstract class BaseViewModel : ObservableObject
     {
         protected readonly ILogger _logger;
-        protected readonly AppDbContext _db;
 
-        protected BaseViewModel(ILogger logger, AppDbContext db)
+        protected BaseViewModel(ILogger logger)
         {
             _logger = logger;
-            _db = db;
         }
     }
 }

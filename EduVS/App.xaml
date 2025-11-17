@@ -1,19 +1,7 @@
 ﻿<Application x:Class="EduVS.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="clr-namespace:EduVS.ViewModels"
-             xmlns:views="clr-namespace:EduVS.Views">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Application.Resources>
-        
-        <!-- tests --> 
-        <DataTemplate DataType="{x:Type vm:TestsViewModel}">
-            <views:TestsView />
-        </DataTemplate>
-        
-        <!-- students -->
-        <DataTemplate DataType="{x:Type vm:ClassesViewModel}">
-            <views:ClassesView />
-        </DataTemplate>
 
     </Application.Resources>
 </Application>

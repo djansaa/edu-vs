@@ -1,6 +1,5 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using EduVS.Data;
 using EduVS.Helpers;
 using Microsoft.Extensions.Logging;
 using System.Windows;
@@ -23,7 +22,7 @@ namespace EduVS.ViewModels
         public RelayCommand BrowseTemplateBCommand { get; }
         public RelayCommand ExportCommand { get; }
 
-        public GenerateTestViewModel(ILogger<GenerateTestViewModel> logger, AppDbContext db) : base(logger, db)
+        public GenerateTestViewModel(ILogger<GenerateTestViewModel> logger) : base(logger)
         {
             TestDate = DateTime.Today;
 

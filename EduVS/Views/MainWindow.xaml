@@ -23,11 +23,6 @@
                 </Style>
             </StackPanel.Resources>
 
-            
-            <Button Content="Classes" Command="{Binding ShowClassesCommand}" Visibility="Collapsed"/>
-            <Separator Margin="0,10" Visibility="Collapsed"/>
-            <Button Content="Tests" Command="{Binding ShowTestsCommand}" Visibility="Collapsed"/>
-            <Separator Margin="0,10" Visibility="Collapsed"/>
             <Button Content="Create new test" Command="{Binding ShowGenerateTestWindowCommand}"/>
             <Separator Margin="0,10"/>
             <Button Content="Prepare test check" Command="{Binding ShowPrepareTestCheckWindowCommand}"/>
@@ -43,7 +38,5 @@
                       ResizeBehavior="PreviousAndNext"
                       ShowsPreview="True"
                       Background="LightGray"/>
-
-        <ContentControl Grid.Column="2" Content="{Binding CurrentViewModel}" />
     </Grid>
 </Window>

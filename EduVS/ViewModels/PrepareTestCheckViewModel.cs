@@ -1,6 +1,5 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using EduVS.Data;
 using EduVS.Helpers;
 using Microsoft.Extensions.Logging;
 using System.Windows;
@@ -29,7 +28,7 @@ namespace EduVS.ViewModels
         public RelayCommand BrowsePdfANewCommmand { get; }
         public RelayCommand BrowsePdfBNewCommmand { get; }
 
-        public PrepareTestCheckViewModel(ILogger<PrepareTestCheckViewModel> logger, AppDbContext db) : base(logger, db)
+        public PrepareTestCheckViewModel(ILogger<PrepareTestCheckViewModel> logger) : base(logger)
         {
             BrowsePdfCommand = new RelayCommand(BrowsePdf);
             BrowsePdfANewCommmand = new RelayCommand(BrowsePdfANew);

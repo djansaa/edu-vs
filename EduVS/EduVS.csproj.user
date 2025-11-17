@@ -14,9 +14,6 @@
     <Compile Update="Views\AddSubjectDialogWindow.xaml.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Update="Views\ClassesView.xaml.cs">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Update="Views\GenerateTestResultsWindowView.xaml.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -24,9 +21,6 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Update="Views\PrepareTestCheckWindowView.xaml.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Update="Views\TestsView.xaml.cs">
       <SubType>Code</SubType>
     </Compile>
   </ItemGroup>
