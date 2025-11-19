@@ -9,6 +9,7 @@ namespace EduVS.ViewModels
 {
     public partial class GenerateTestViewModel : BaseViewModel
     {
+        [ObservableProperty] private string? testSubject;
         [ObservableProperty] private string? testName;
         [ObservableProperty] private DateTime testDate;
 
@@ -49,6 +50,18 @@ namespace EduVS.ViewModels
 
         private void ExportTests()
         {
+            // check page count
+            if (TemplateACount + TemplateBCount == 0)
+            {
+                MessageBox.Show("Total number of test pages is 0.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            // testSubject
+            if (string.IsNullOrEmpty(TestSubject))
+            {
+                MessageBox.Show("Test subject is empty.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
             // testName
             if (string.IsNullOrEmpty(TestName))
             {
@@ -87,6 +100,7 @@ namespace EduVS.ViewModels
             // summary name of templates, number of A and B tests, date
             var summary = MessageBox.Show(
                 $"Exporting test with the following details:\n\n" +
+                $"Test Subject: {TestSubject}\n" +
                 $"Test Name: {TestName}\n" +
                 $"Test Date: {TestDate:yyyy-MM-dd}\n" +
                 $"Template A: {(string.IsNullOrEmpty(TemplateAPath) ? "None" : TemplateAPath)} (Count: {TemplateACount})\n" +
@@ -101,7 +115,7 @@ namespace EduVS.ViewModels
 
             // create PDF
             var pdfManager = new PdfManager();
-            pdfManager.GenerateTestPrintTemplate(outputPath, TestName, TestDate.ToString("yyyy-MM-dd"), TemplateAPath, TemplateACount, TemplateBPath, TemplateBCount);
+            pdfManager.GenerateTestPrintTemplate(outputPath, TestSubject, TestName, TestDate.ToString("yyyy-MM-dd"), TemplateAPath, TemplateACount, TemplateBPath, TemplateBCount);
 
             MessageBox.Show("Test PDF generated successfully.", "Export Complete", MessageBoxButton.OK, MessageBoxImage.Information);
         }

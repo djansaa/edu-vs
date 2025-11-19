@@ -21,9 +21,13 @@ namespace EduVS.Helpers
 
         }
 
-        public void GenerateTestPrintTemplate(string outputPath, string testName, string testDate, string? templateAPath, int templateACount, string? templateBPath, int templateBCount)
+        public void GenerateTestPrintTemplate(string outputPath, string testSubject, string testName, string testDate, string? templateAPath, int templateACount, string? templateBPath, int templateBCount)
         {
             // validate inputs
+            if (string.IsNullOrEmpty(testSubject))
+            {
+                throw new ArgumentException("Test subject is empty.", nameof(outputPath));
+            }
             if (string.IsNullOrEmpty(testName))
             {
                 throw new ArgumentException("Test name is empty.", nameof(testName));
@@ -59,7 +63,7 @@ namespace EduVS.Helpers
 
             // document builder
             using var dst = new PdfDocument();
-            dst.Info.Title = $"{testName}";
+            dst.Info.Title = $"{testSubject}_{testName}";
             dst.Info.Author = "EduVS";
 
             // fonts
@@ -113,7 +117,7 @@ namespace EduVS.Helpers
                             gfx.DrawString(groupLetter, fontBoldBigger, XBrushes.Black, new XPoint(centerX, top + 55), XStringFormats.Center);
 
                             // test name
-                            gfx.DrawString($"{testName} ({testCount})", fontBoldBigger, XBrushes.Black, new XPoint(centerX, top + 75), XStringFormats.Center);
+                            gfx.DrawString($"{testName}", fontBoldBigger, XBrushes.Black, new XPoint(centerX, top + 75), XStringFormats.Center);
                         }
 
                         // ##################### QR CODE #####################
@@ -445,7 +449,7 @@ namespace EduVS.Helpers
             var subset = new SKBitmap();
             if (!src.ExtractSubset(subset, new SKRectI(x, y, x + w, y + h)))
                 throw new InvalidOperationException("ExtractSubset failed.");
-            return subset; // ⚠️ depends on src's pixel memory
+            return subset;
         }
 
         static SKBitmap RotateSK180(SKBitmap src)

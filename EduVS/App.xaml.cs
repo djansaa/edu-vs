@@ -26,21 +26,17 @@ namespace EduVS
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Debug()
                 .WriteTo.Debug()
-                .CreateLogger();
+                .CreateBootstrapLogger();
 
             // HOST
             _host = Host.CreateDefaultBuilder()
-                // CONFIG FILES
-                .ConfigureAppConfiguration((ctx, cfg) =>
-                {
-                    var env = ctx.HostingEnvironment.EnvironmentName;
-
-                    cfg.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-                       .AddJsonFile($"appsettings.{env}.json", optional: true, reloadOnChange: true);
-                }
-                )
+                // CONFIGURATION
+                // host already loads appsettings
                 // LOGGING
-                .UseSerilog((ctx, _, logger) => logger.ReadFrom.Configuration(ctx.Configuration))
+                .UseSerilog((ctx, services, logger) => logger
+                    .ReadFrom.Configuration(ctx.Configuration)
+                    .ReadFrom.Services(services)
+                    .Enrich.FromLogContext())
                 // SERVICES
                 .ConfigureServices((ctx, services) =>
                 {
