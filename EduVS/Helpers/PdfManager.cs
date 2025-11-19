@@ -32,12 +32,6 @@ namespace EduVS.Helpers
             {
                 throw new ArgumentException("Test name is empty.", nameof(testName));
             }
-
-            if (string.IsNullOrEmpty(testName))
-            {
-                throw new ArgumentException("Test name is empty.", nameof(testName));
-            }
-
             if (string.IsNullOrEmpty(testDate))
             {
                 throw new ArgumentException("Test date is empty.", nameof(testDate));
@@ -103,14 +97,14 @@ namespace EduVS.Helpers
                         if (p == 0)
                         {
                             // name
-                            gfx.DrawString("jméno:", fontBold, XBrushes.Black, new XPoint(margin, top + 17));
+                            gfx.DrawString("příjmení jméno:", fontBold, XBrushes.Black, new XPoint(margin, top + 17));
 
                             // name box
-                            gfx.DrawRectangle(XPens.Black, XBrushes.Transparent, new XRect(margin + 45, top, 270, 30));
+                            gfx.DrawRectangle(XPens.Black, XBrushes.Transparent, new XRect(margin + 95, top, 245, 30));
 
                             // date
                             var dateText = $"datum: {testDate:yyyy-MM-dd}";
-                            gfx.DrawString(dateText, fontBold, XBrushes.Black, new XPoint(margin + 330, top + 17));
+                            gfx.DrawString(dateText, fontBold, XBrushes.Black, new XPoint(margin + 345, top + 17));
 
                             // test subject + group
                             var centerX = w / 2.0;
@@ -130,7 +124,7 @@ namespace EduVS.Helpers
                         int ppm = Math.Max(4, pxSize / 33);
 
                         // create qr code png
-                        var png = qrCodeManager.CreateQrPng(qrData, marginModules: 2);
+                        var png = qrCodeManager.CreateQrPng(qrData, marginModules: 1);
                         using var ms = new MemoryStream(png);
                         using var img = XImage.FromStream(ms);
 
