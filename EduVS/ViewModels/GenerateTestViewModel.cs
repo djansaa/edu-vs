@@ -94,7 +94,7 @@ namespace EduVS.ViewModels
             }
 
             // select export path for As and Bs tests
-            var outputPath = PdfPicker.PickPdfSavePath($"{TestName}_{TestDate:yyyy-MM-dd}_print.pdf");
+            var outputPath = PdfPicker.PickPdfSavePath($"{TestSubject}_{TestName}_{TestDate:yyyy-MM-dd}_print.pdf");
             if (outputPath == null) return;
 
             // summary name of templates, number of A and B tests, date
