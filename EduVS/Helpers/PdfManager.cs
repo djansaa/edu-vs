@@ -75,7 +75,7 @@ namespace EduVS.Helpers
             int testCount = 0;
 
             // local function to append header
-            void AppendHeader(string templatePath, int count, string groupLetter)
+            void AppendHeader(string templatePath, int count, string testSubject, string groupLetter)
             {
                 using var src = PdfReader.Open(templatePath, PdfDocumentOpenMode.Import);
 
@@ -112,9 +112,9 @@ namespace EduVS.Helpers
                             var dateText = $"datum: {testDate:yyyy-MM-dd}";
                             gfx.DrawString(dateText, fontBold, XBrushes.Black, new XPoint(margin + 330, top + 17));
 
-                            // group
+                            // test subject + group
                             var centerX = w / 2.0;
-                            gfx.DrawString(groupLetter, fontBoldBigger, XBrushes.Black, new XPoint(centerX, top + 55), XStringFormats.Center);
+                            gfx.DrawString($"{testSubject} [{groupLetter}]", fontBoldBigger, XBrushes.Black, new XPoint(centerX, top + 55), XStringFormats.Center);
 
                             // test name
                             gfx.DrawString($"{testName}", fontBoldBigger, XBrushes.Black, new XPoint(centerX, top + 75), XStringFormats.Center);
@@ -123,7 +123,7 @@ namespace EduVS.Helpers
                         // ##################### QR CODE #####################
 
                         // qr code data
-                        var qrData = $"TESTID:{testCount}|GROUPID:{groupLetter}|TESTNAME:{testName}|TESTDATE:{testDate}|PAGE:{p + 1}";
+                        var qrData = $"TESTID:{testCount}|GROUPID:{groupLetter}|TESTSUBJECT:{testSubject}|TESTNAME:{testName}|TESTDATE:{testDate}|PAGE:{p + 1}";
 
                         int dpi = 300;
                         int pxSize = (int)Math.Round(Math.Min(qrSize, qrSize) * dpi / 72.0);
@@ -143,9 +143,9 @@ namespace EduVS.Helpers
             }
 
             // create pages for template A
-            if (!string.IsNullOrWhiteSpace(templateAPath) && templateACount > 0) AppendHeader(templateAPath, templateACount, "A");
+            if (!string.IsNullOrWhiteSpace(templateAPath) && templateACount > 0) AppendHeader(templateAPath, templateACount, testSubject, "A");
 
-            if (!string.IsNullOrWhiteSpace(templateBPath) && templateBCount > 0) AppendHeader(templateBPath, templateBCount, "B");
+            if (!string.IsNullOrWhiteSpace(templateBPath) && templateBCount > 0) AppendHeader(templateBPath, templateBCount, testSubject, "B");
 
             dst.Save(outputPath);
         }

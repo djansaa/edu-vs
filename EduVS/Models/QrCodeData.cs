@@ -7,6 +7,7 @@ namespace EduVS.Models
         // $"TESTID:{testCount}|GROUPID:{groupLetter}|TESTNAME:{testName}|TESTDATE:{testDate}|PAGE:{p+1}";
         public int TestId { get; set; }
         public char GroupId { get; set; } // 'A' / 'B'
+        public string TestSubject { get; set; } = "";
         public string TestName { get; set; } = "";
         public DateTime? TestDate { get; set; } // yyyy-MM-dd
         public int Page { get; set; } // 0-based
@@ -36,6 +37,7 @@ namespace EduVS.Models
             // required fields
             if (!dict.TryGetValue("TESTID", out var testIdStr)) return false;
             if (!dict.TryGetValue("GROUPID", out var groupStr)) return false;
+            if (!dict.TryGetValue("TESTSUBJECT", out var subjectStr)) return false;
             if (!dict.TryGetValue("TESTNAME", out var nameStr)) return false;
             if (!dict.TryGetValue("PAGE", out var pageStr)) return false;
 
@@ -59,6 +61,7 @@ namespace EduVS.Models
             {
                 TestId = testId,
                 GroupId = group,
+                TestSubject = subjectStr,
                 TestName = nameStr,
                 TestDate = date,
                 Page = page
