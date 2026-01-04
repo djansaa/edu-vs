@@ -2,6 +2,7 @@
 using CommunityToolkit.Mvvm.Input;
 using EduVS.Helpers;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 using System.Windows;
 
 
@@ -98,20 +99,13 @@ namespace EduVS.ViewModels
             if (outputPath == null) return;
 
             // summary name of templates, number of A and B tests, date
-            var summary = MessageBox.Show(
-                $"Exporting test with the following details:\n\n" +
+            _logger.LogInformation($"Exporting test with the following details:\n\n" +
                 $"Test Subject: {TestSubject}\n" +
                 $"Test Name: {TestName}\n" +
                 $"Test Date: {TestDate:yyyy-MM-dd}\n" +
                 $"Template A: {(string.IsNullOrEmpty(TemplateAPath) ? "None" : TemplateAPath)} (Count: {TemplateACount})\n" +
                 $"Template B: {(string.IsNullOrEmpty(TemplateBPath) ? "None" : TemplateBPath)} (Count: {TemplateBCount})\n\n" +
-                $"Output Path: {outputPath}\n\n" +
-                $"Proceed with export?",
-                "Confirm Export",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
-
-            if (summary == MessageBoxResult.No) return;
+                $"Output Path: {outputPath}");
 
             // create PDF
             var pdfManager = new PdfManager();

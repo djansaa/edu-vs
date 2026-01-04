@@ -2,6 +2,7 @@
 using CommunityToolkit.Mvvm.Input;
 using EduVS.Helpers;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 using System.Windows;
 
 namespace EduVS.ViewModels
@@ -81,19 +82,12 @@ namespace EduVS.ViewModels
             }
 
             // summary name of templates, number of A and B tests, date
-            var summary = MessageBox.Show(
-                $"Exporting filled tests with the following settings:\n\n" +
+            _logger.LogInformation($"Exporting filled tests with the following settings:\n\n" +
                 $"PDF: {PdfPath}\n" +
                 $"Output mode: {(IsSplitByGroup ? "Split by group" : "Single merged PDF")}\n" +
                 $"Output path A: {PdfPathA}\n" +
                 $"Output path B: {PdfPathB}\n" +
-                $"Sorting: {(SortByPageNumber ? "By page number" : "By test number")}\n\n" +
-                $"Proceed with export?",
-                "Confirm Export",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
-
-            if (summary == MessageBoxResult.No) return;
+                $"Sorting: {(SortByPageNumber ? "By page number" : "By test number")}");
 
             // pdf manager
             var pdfManager = new PdfManager();
