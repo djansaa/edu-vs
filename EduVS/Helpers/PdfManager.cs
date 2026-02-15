@@ -124,7 +124,7 @@ namespace EduVS.Helpers
                         int ppm = Math.Max(4, pxSize / 33);
 
                         // create qr code png
-                        var png = qrCodeManager.CreateQrPng(qrData, marginModules: 1);
+                        var png = qrCodeManager.CreateQrPng(qrData, marginModules: 5);
                         using var ms = new MemoryStream(png);
                         using var img = XImage.FromStream(ms);
 
@@ -170,9 +170,6 @@ namespace EduVS.Helpers
             // output pages collection
             var outputPagesData = new List<(int pageId, int rotation, QrCodeData qr)>();
 
-            // qr code manager
-            QrCodeManager qrCodeManager = new QrCodeManager();
-
             // source pdf
             using var src = PdfReader.Open(inputPath, PdfDocumentOpenMode.Import);
 
@@ -187,47 +184,40 @@ namespace EduVS.Helpers
                 }
             };
 
-            // for each page, render to bitmap, try decode QR in top-right corner
-            for (int i = 0; i < src.PageCount; i++)
+            // for each page -> try decode qr
+            for (int pageIndex = 0; pageIndex < src.PageCount; pageIndex++)
             {
-                string? qr = null;
-                int rotate = 0;
+                string? qrText;
+                int rotation;
 
-                // render page -> bitmap -> try decode QR
-                using (var sk = PdfPageToSKBitmap(inputPath, i))
+                // render page once per loop
+                using (var sk = PdfPageToSKBitmap(inputPath, pageIndex))
                 using (var full = SKBitmapToBitmap(sk))
                 {
-                    // try decode QR in top-right corner
-                    qr = TryDecodeTopRight(reader, full);
-
-                    // if not found, rotate 180 and try again
-                    if (qr == null)
-                    {
-                        Debug.WriteLine($"Page: {i + 1} - QR code not found -> rotating 180 degrees.");
-                        using var full180 = RotateBitmap180(full);
-                        rotate = 180;
-                        // save img full180
-                        //full180.Save(@$"C:\Users\David\Downloads\page_{i}_rotated.png", ImageFormat.Png);
-
-                        qr = TryDecodeTopRight(reader, full180);
-                    }
+                    (qrText, rotation) = TryDecodePage(reader, full);
                 }
 
-                if (qr == null)
+                QrCodeData qcd;
+
+                // if qr not found, create dummy
+                if (qrText == null)
                 {
-                    // QR code not found even after rotation
-                    Debug.WriteLine($"Page: {i} - QR code not found.");
-                    continue;
+                    // TODO: jak je možné, že to nerozpoznalo qr kód?? -> nechat uživatele rozhodnout, kam zařadit stránku (A/B/gg)
+
+                    Debug.WriteLine($"Page: {pageIndex + 1} - QR NOT FOUND");
+                } 
+                else
+                {
+                    qcd = QrCodeData.Parse(qrText);
+
+                    Debug.WriteLine($"Page: {pageIndex + 1} - QR: TestId={qcd.TestId}, GroupId={qcd.GroupId}, TestName={qcd.TestName}, TestDate={qcd.TestDate:yyyy-MM-dd}, Page={qcd.Page} | Rotation={rotation}");
+
+                    outputPagesData.Add((pageIndex, rotation, qcd));
                 }
-
-                // qr code data
-                QrCodeData qcd = QrCodeData.Parse(qr);
-
-                // make tuple made of QrCodeData and pdf page
-                Debug.WriteLine($"Page: {i} - QR code found: TestId={qcd.TestId}, GroupId={qcd.GroupId}, TestName={qcd.TestName}, TestDate={qcd.TestDate:yyyy-MM-dd}, Page={qcd.Page}");
-
-                outputPagesData.Add((i, rotate, qcd));
             }
+
+            Debug.WriteLine($"Total input pages: {src.PageCount}");
+            Debug.WriteLine($"Total output pages: {outputPagesData.Count}");
 
             // ================== CREATE OUTPUT PDFS ==================
             // SORTING
@@ -280,11 +270,33 @@ namespace EduVS.Helpers
             dst.Save(outputPath);
         }
 
-        private string? TryDecodeTopRight(BarcodeReader reader, Bitmap full, float relW = 0.45f, float relH = 0.45f)
+        private (string? text, int rotation) TryDecodePage(BarcodeReader reader, Bitmap full, float relW = 0.6f, float relH = 0.6f)
+        {
+            // 1) ROI on original
+            var text = TryDecodeRegion(reader, full, relW, relH);
+            if (text != null) return (text, 0);
+
+            // 2) ROI on 180° rotated
+            var rotated = RotateBitmap180(full);
+            text = TryDecodeRegion(reader, rotated, relW, relH);
+            if (text != null) return (text, 180);
+
+            // 3) Full page on original
+            text = reader.Decode(full)?.Text;
+            if (text != null) return (text, 0);
+
+            // 4) Full page on rotated
+            text = reader.Decode(rotated)?.Text;
+            if (text != null) return (text, 180);
+
+            return (null, 0);
+        }
+
+        private string? TryDecodeRegion(BarcodeReader reader, Bitmap full, float relW, float relH)
         {
             using var roi = CropTopRight(full, relW, relH);
-            var r = reader.Decode(roi);
-            return r?.Text;
+            var result = reader.Decode(roi);
+            return result?.Text;
         }
 
         private Bitmap SKBitmapToBitmap(SKBitmap skb)
@@ -295,7 +307,7 @@ namespace EduVS.Helpers
             return (Bitmap)System.Drawing.Image.FromStream(ms);
         }
 
-        private Bitmap CropTopRight(Bitmap bmp, float relW, float relH)
+        private Bitmap CropTopRight(Bitmap bmp, float relW = 0.3f, float relH = 0.3f)
         {
             int w = Math.Max(1, (int)(bmp.Width * relW));
             int h = Math.Max(1, (int)(bmp.Height * relH));
@@ -316,7 +328,7 @@ namespace EduVS.Helpers
             return dest;
         }
 
-        private int NormalizeRotate(int deg) => ((deg % 360) + 360) % 360 switch { 0 => 0, 90 => 90, 180 => 180, 270 => 270, _ => 0 };
+        private int NormalizeRotate(int deg) => (((deg % 360) + 360) % 360) switch { 0 => 0, 90 => 90, 180 => 180, 270 => 270, _ => 0 };
 
         // ================================================ AI =============================================
 

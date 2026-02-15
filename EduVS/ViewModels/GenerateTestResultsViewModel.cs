@@ -125,6 +125,7 @@ namespace EduVS.ViewModels
                 return;
             }
             SelectedStudent.TestId = SelectedTest.TestId;
+            SelectedTest.Assigned = true;
         }
 
         [RelayCommand]

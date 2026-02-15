@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿using System.Diagnostics;
+using System.Globalization;
 
 namespace EduVS.Models
 {
@@ -35,11 +36,31 @@ namespace EduVS.Models
             }
 
             // required fields
-            if (!dict.TryGetValue("TESTID", out var testIdStr)) return false;
-            if (!dict.TryGetValue("GROUPID", out var groupStr)) return false;
-            if (!dict.TryGetValue("TESTSUBJECT", out var subjectStr)) return false;
-            if (!dict.TryGetValue("TESTNAME", out var nameStr)) return false;
-            if (!dict.TryGetValue("PAGE", out var pageStr)) return false;
+            if (!dict.TryGetValue("TESTID", out var testIdStr))
+            {
+                Debug.WriteLine("TESTID not found in QR code data.");
+                return false;
+            }
+            if (!dict.TryGetValue("GROUPID", out var groupStr))
+            {
+                Debug.WriteLine("GROUPID not found in QR code data.");
+                return false;
+            }
+            if (!dict.TryGetValue("TESTSUBJECT", out var subjectStr))
+            {
+                Debug.WriteLine("TESTSUBJECT not found in QR code data.");
+                return false;
+            }
+            if (!dict.TryGetValue("TESTNAME", out var nameStr))
+            {
+                Debug.WriteLine("TESTNAME not found in QR code data.");
+                return false;
+            }
+            if (!dict.TryGetValue("PAGE", out var pageStr))
+            {
+                Debug.WriteLine("PAGE not found in QR code data.");
+                return false;
+            }
 
             if (!int.TryParse(testIdStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out var testId)) return false;
             if (!int.TryParse(pageStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out var page)) return false;

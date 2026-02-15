@@ -6,5 +6,6 @@ namespace EduVS.Models
     {
         public int TestId { get; set; }
         public BitmapSource NameBoxBitmap { get; set; } = null!;
+        public bool Assigned { get; set; } = false;
     }
 }
