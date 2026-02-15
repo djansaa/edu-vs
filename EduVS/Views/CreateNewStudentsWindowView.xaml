@@ -1,0 +1,165 @@
+﻿<Window x:Class="EduVS.Views.CreateNewStudentsWindowView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Create new students" Height="760" Width="1100"
+        WindowStartupLocation="CenterOwner">
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="12"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="12"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="12"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="Create new students" FontSize="24" FontWeight="SemiBold"/>
+
+        <GroupBox Grid.Row="2" Header="Source settings" Padding="12">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="10"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="10"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="10"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="170"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Source file (CSV):" VerticalAlignment="Center" FontWeight="Bold"/>
+                    <TextBox Grid.Column="1" Text="{Binding SourceFilePath}" IsReadOnly="True" Margin="8,0,8,0"/>
+                    <Button Grid.Column="2" Content="Browse..." Width="110" Command="{Binding BrowseSourceFileCommand}"/>
+                </Grid>
+
+                <Grid Grid.Row="2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="170"/>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="40"/>
+                        <ColumnDefinition Width="170"/>
+                        <ColumnDefinition Width="100"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" Text="CSV separator:" VerticalAlignment="Center" FontWeight="Bold"/>
+                    <TextBox Grid.Column="1"
+                             VerticalContentAlignment="Center"
+                             Text="{Binding SelectedSeparator, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+                    <TextBlock Grid.Column="3" Text="Start row:" VerticalAlignment="Center" FontWeight="Bold"/>
+                    <Grid Grid.Column="4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="24"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0"
+                                 VerticalContentAlignment="Center"
+                                 Text="{Binding StartRow, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                        <Grid Grid.Column="1">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <RepeatButton Grid.Row="0" Content="▲" FontSize="9" Command="{Binding IncreaseStartRowCommand}"/>
+                            <RepeatButton Grid.Row="1" Content="▼" FontSize="9" Command="{Binding DecreaseStartRowCommand}"/>
+                        </Grid>
+                    </Grid>
+                </Grid>
+
+                <StackPanel Grid.Row="4" Orientation="Horizontal">
+                    <TextBlock Text="Name mapping:" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,10,0"/>
+                    <CheckBox Content="Use one column containing name + surname"
+                              IsChecked="{Binding UseCombinedNameColumn, Mode=TwoWay}"/>
+                </StackPanel>
+
+                <Grid Grid.Row="6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="170"/>
+                        <ColumnDefinition Width="200"/>
+                        <ColumnDefinition Width="40"/>
+                        <ColumnDefinition Width="170"/>
+                        <ColumnDefinition Width="200"/>
+                        <ColumnDefinition Width="20"/>
+                        <ColumnDefinition Width="170"/>
+                        <ColumnDefinition Width="200"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" Text="Full name column:" VerticalAlignment="Center" FontWeight="Bold"/>
+                    <ComboBox Grid.Column="1"
+                              ItemsSource="{Binding AvailableColumns}"
+                              SelectedItem="{Binding SelectedCombinedNameColumn, Mode=TwoWay}"
+                              DisplayMemberPath="Name"/>
+
+                    <TextBlock Grid.Column="3" Text="Name column:" VerticalAlignment="Center" FontWeight="Bold"/>
+                    <ComboBox Grid.Column="4"
+                              ItemsSource="{Binding AvailableColumns}"
+                              SelectedItem="{Binding SelectedNameColumn, Mode=TwoWay}"
+                              DisplayMemberPath="Name"/>
+
+                    <TextBlock Grid.Column="6" Text="Surname column:" VerticalAlignment="Center" FontWeight="Bold"/>
+                    <ComboBox Grid.Column="7"
+                              ItemsSource="{Binding AvailableColumns}"
+                              SelectedItem="{Binding SelectedSurnameColumn, Mode=TwoWay}"
+                              DisplayMemberPath="Name"/>
+                </Grid>
+            </Grid>
+        </GroupBox>
+
+        <Grid Grid.Row="4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <GroupBox Grid.Column="0" Header="CSV preview" Padding="8">
+                <DataGrid ItemsSource="{Binding PreviewRows}"
+                          AutoGenerateColumns="True"
+                          IsReadOnly="True"
+                          CanUserAddRows="False"
+                          CanUserDeleteRows="False"/>
+            </GroupBox>
+
+            <GroupBox Grid.Column="2" Header="Students to create" Padding="8">
+                <ListBox ItemsSource="{Binding ParsedStudents}"/>
+            </GroupBox>
+        </Grid>
+
+        <Grid Grid.Row="6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="170"/>
+                <ColumnDefinition Width="300"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="0" Text="Class name:" FontWeight="Bold" VerticalAlignment="Center"/>
+            <TextBox Grid.Column="1" Text="{Binding ClassName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+            <Button Grid.Column="3"
+                    Content="Cancel"
+                    Width="110"
+                    Command="{Binding CancelCommand}"
+                    CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"/>
+
+            <Button Grid.Column="5"
+                    Content="Create new students"
+                    Width="160"
+                    Command="{Binding ConfirmCommand}"
+                    CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"/>
+        </Grid>
+    </Grid>
+</Window>

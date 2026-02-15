@@ -38,5 +38,13 @@ namespace EduVS.ViewModels
             win.Owner = Application.Current.MainWindow;
             win.ShowDialog();
         }
+
+        [RelayCommand]
+        public void ShowCreateNewStudentsWindow()
+        {
+            var win = _sp.GetRequiredService<CreateNewStudentsWindowView>();
+            win.Owner = Application.Current.MainWindow;
+            win.ShowDialog();
+        }
     }
 }

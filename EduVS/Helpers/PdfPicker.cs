@@ -51,6 +51,20 @@ namespace EduVS.Helpers
             return dlg.ShowDialog() == true ? dlg.FolderName : null;
         }
 
+
+        public static string? PickCsvSavePath(string suggestedName)
+        {
+            var dlg = new SaveFileDialog
+            {
+                Title = "Export CSV",
+                Filter = "CSV (*.csv)|*.csv",
+                DefaultExt = ".csv",
+                AddExtension = true,
+                OverwritePrompt = true,
+                FileName = suggestedName
+            };
+            return dlg.ShowDialog() == true ? Path.ChangeExtension(dlg.FileName, ".csv") : null;
+        }
         public static string? PickPdfSavePath(string suggestedName)
         {
             var dlg = new SaveFileDialog
