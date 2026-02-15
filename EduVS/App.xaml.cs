@@ -47,12 +47,14 @@ namespace EduVS
                     services.AddTransient<GenerateTestViewModel>();
                     services.AddTransient<PrepareTestCheckViewModel>();
                     services.AddTransient<GenerateTestResultsViewModel>();
+                    services.AddTransient<CreateNewStudentsViewModel>();
 
                     // view
                     services.AddSingleton<MainWindow>();
                     services.AddTransient<GenerateTestWindowView>();
                     services.AddTransient<PrepareTestCheckWindowView>();
                     services.AddTransient<GenerateTestResultsWindowView>();
+                    services.AddTransient<CreateNewStudentsWindowView>();
 
                 })
                 .Build();
