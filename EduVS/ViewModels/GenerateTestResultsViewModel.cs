@@ -2,9 +2,10 @@
 using CommunityToolkit.Mvvm.Input;
 using EduVS.Helpers;
 using EduVS.Models;
+using EduVS.Views;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Collections.ObjectModel;
-using System.Data;
 using System.IO;
 using System.Text;
 using System.Windows;
@@ -25,30 +26,23 @@ namespace EduVS.ViewModels
 
         [ObservableProperty] private bool isStarted;
 
-        [ObservableProperty] private ObservableCollection<string> separatorOptions = new() { ";", ",", "\t", "|" };
-        [ObservableProperty] private string selectedSeparator = ";";
-        [ObservableProperty] private int startRow = 1;
-
-        [ObservableProperty] private ObservableCollection<ColumnOption> availableColumns = new();
-        [ObservableProperty] private ColumnOption? selectedNameColumn;
-        [ObservableProperty] private ColumnOption? selectedSurnameColumn;
-
-        [ObservableProperty] private DataView? previewRows;
-        [ObservableProperty] private ObservableCollection<StudentData> parsedStudentsPreview = new();
-
         private readonly PdfManager _pdf = new();
+        private readonly IServiceProvider _serviceProvider;
         private string? _combinedPdfPath;
         private Dictionary<int, List<int>> _pagesByTestId = new();
-        private List<string[]> _filteredRows = new();
 
-        public GenerateTestResultsViewModel(ILogger<GenerateTestResultsViewModel> logger) : base(logger) { }
+        public GenerateTestResultsViewModel(ILogger<GenerateTestResultsViewModel> logger, IServiceProvider serviceProvider) : base(logger)
+        {
+            _serviceProvider = serviceProvider;
+        }
 
-        // Keep previews in sync with import settings changes.
-        partial void OnStudentsFilePathChanged(string value) => RefreshStudentsPreview();
-        partial void OnSelectedSeparatorChanged(string value) => RefreshStudentsPreview();
-        partial void OnStartRowChanged(int value) => RefreshStudentsPreview();
-        partial void OnSelectedNameColumnChanged(ColumnOption? value) => BuildParsedStudentsPreview();
-        partial void OnSelectedSurnameColumnChanged(ColumnOption? value) => BuildParsedStudentsPreview();
+        partial void OnStudentsFilePathChanged(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                Students = new ObservableCollection<StudentData>();
+            }
+        }
 
         [RelayCommand]
         private void BrowsePdfs()
@@ -68,6 +62,14 @@ namespace EduVS.ViewModels
         }
 
         [RelayCommand]
+        private void OpenCreateNewStudentsWindow()
+        {
+            var window = _serviceProvider.GetRequiredService<CreateNewStudentsWindowView>();
+            window.Owner = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive);
+            window.ShowDialog();
+        }
+
+        [RelayCommand]
         private void Start()
         {
             if (SelectedPdfPaths is null || !SelectedPdfPaths.Any())
@@ -81,15 +83,11 @@ namespace EduVS.ViewModels
                 return;
             }
 
-            // Use parsed preview as the source of truth for imported students.
-            var parsedStudents = ParsedStudentsPreview
-                .Where(s => !string.IsNullOrWhiteSpace(s.Name))
-                .Select(s => new StudentData { Name = s.Name, TestId = null })
-                .ToList();
+            var parsedStudents = ParseStudentsFromFile();
 
             if (parsedStudents.Count == 0)
             {
-                MessageBox.Show("No students could be parsed from the selected file and settings.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("No students could be parsed from the selected file.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -111,122 +109,74 @@ namespace EduVS.ViewModels
             IsStarted = true;
         }
 
-        private void RefreshStudentsPreview()
+        private List<StudentData> ParseStudentsFromFile()
         {
-            PreviewRows = null;
-            ParsedStudentsPreview = new ObservableCollection<StudentData>();
-            AvailableColumns = new ObservableCollection<ColumnOption>();
-            _filteredRows.Clear();
-
             if (string.IsNullOrWhiteSpace(StudentsFilePath) || !File.Exists(StudentsFilePath))
             {
-                return;
+                return new List<StudentData>();
             }
 
             try
             {
-                // Load rows from CSV/TXT or Excel depending on extension.
                 var extension = Path.GetExtension(StudentsFilePath).ToLowerInvariant();
-                var allRows = extension switch
+                var rows = extension switch
                 {
-                    ".csv" or ".txt" => LoadRowsFromCsv(StudentsFilePath, SelectedSeparator),
+                    ".csv" or ".txt" => LoadRowsFromCsv(StudentsFilePath),
                     ".xlsx" or ".xls" => LoadRowsFromExcel(StudentsFilePath),
                     _ => throw new InvalidOperationException("Unsupported file format. Choose CSV or Excel file.")
                 };
 
-                // Apply row filter and ignore fully empty rows.
-                _filteredRows = allRows
-                    .Where(x => x.RowNumber >= StartRow)
-                    .Select(x => x.Values)
-                    .Where(values => values.Any(v => !string.IsNullOrWhiteSpace(v)))
-                    .ToList();
-
-                var maxColumns = _filteredRows.Count == 0 ? 0 : _filteredRows.Max(r => r.Length);
-                var columns = Enumerable.Range(0, maxColumns)
-                    .Select(i => new ColumnOption(i, $"Column {i + 1}"));
-                AvailableColumns = new ObservableCollection<ColumnOption>(columns);
-
-                if (AvailableColumns.Count > 0)
+                var students = new List<StudentData>();
+                foreach (var row in rows)
                 {
-                    SelectedNameColumn ??= AvailableColumns[0];
-                    if (SelectedNameColumn.Index >= AvailableColumns.Count)
+                    var name = BuildNameFromRow(row.Values);
+                    if (string.IsNullOrWhiteSpace(name))
                     {
-                        SelectedNameColumn = AvailableColumns[0];
+                        continue;
                     }
 
-                    if (SelectedSurnameColumn is not null && SelectedSurnameColumn.Index >= AvailableColumns.Count)
-                    {
-                        SelectedSurnameColumn = null;
-                    }
-                }
-                else
-                {
-                    SelectedNameColumn = null;
-                    SelectedSurnameColumn = null;
+                    students.Add(new StudentData { Name = name, TestId = null });
                 }
 
-                // Build tabular preview for UI DataGrid.
-                var previewTable = new DataTable();
-                for (var i = 0; i < maxColumns; i++)
-                {
-                    previewTable.Columns.Add($"Column {i + 1}", typeof(string));
-                }
-
-                foreach (var row in _filteredRows)
-                {
-                    var dr = previewTable.NewRow();
-                    for (var i = 0; i < maxColumns; i++)
-                    {
-                        dr[i] = i < row.Length ? row[i] : string.Empty;
-                    }
-                    previewTable.Rows.Add(dr);
-                }
-                PreviewRows = previewTable.DefaultView;
-
-                BuildParsedStudentsPreview();
+                return students;
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Failed to load students file.\nError: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return new List<StudentData>();
             }
         }
 
-        private void BuildParsedStudentsPreview()
+        private static string BuildNameFromRow(string[] values)
         {
-            if (SelectedNameColumn is null)
+            var nonEmptyValues = values
+                .Select(v => v?.Trim() ?? string.Empty)
+                .Where(v => !string.IsNullOrWhiteSpace(v))
+                .Take(2)
+                .ToArray();
+
+            if (nonEmptyValues.Length == 0)
             {
-                ParsedStudentsPreview = new ObservableCollection<StudentData>();
-                return;
+                return string.Empty;
             }
 
-            // Build parsed students preview from chosen name/surname columns.
-            var result = new List<StudentData>();
-            foreach (var row in _filteredRows)
-            {
-                var name = CsvHelper.GetValueAt(row, SelectedNameColumn.Index);
-                var surname = SelectedSurnameColumn is null ? string.Empty : CsvHelper.GetValueAt(row, SelectedSurnameColumn.Index);
-
-                var fullName = string.Join(" ", new[] { name, surname }.Where(x => !string.IsNullOrWhiteSpace(x))).Trim();
-                if (string.IsNullOrWhiteSpace(fullName)) continue;
-
-                result.Add(new StudentData { Name = fullName, TestId = null });
-            }
-
-            ParsedStudentsPreview = new ObservableCollection<StudentData>(result);
+            return string.Join(" ", nonEmptyValues);
         }
 
-        private static List<(int RowNumber, string[] Values)> LoadRowsFromCsv(string path, string separator)
+        private static List<(int RowNumber, string[] Values)> LoadRowsFromCsv(string path)
         {
             var rows = new List<(int, string[])>();
             // Existing datasets are commonly exported as windows-1250.
             var enc = Encoding.GetEncoding(1250);
             var allLines = File.ReadAllLines(path, enc);
-            var delimiter = CsvHelper.ResolveDelimiter(separator);
 
             for (var i = 0; i < allLines.Length; i++)
             {
                 var line = allLines[i];
-                rows.Add((i + 1, line.Split(delimiter).Select(x => x.Trim()).ToArray()));
+                var split = line.Split(new[] { ';', ',', '	', '|' }, StringSplitOptions.None)
+                    .Select(x => x.Trim())
+                    .ToArray();
+                rows.Add((i + 1, split));
             }
 
             return rows;
@@ -307,17 +257,4 @@ namespace EduVS.ViewModels
         }
     }
 
-    public class ColumnOption
-    {
-        public int Index { get; }
-        public string Name { get; }
-
-        public ColumnOption(int index, string name)
-        {
-            Index = index;
-            Name = name;
-        }
-
-        public override string ToString() => Name;
-    }
 }
