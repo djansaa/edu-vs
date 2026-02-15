@@ -56,12 +56,6 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="10"/>
                         <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="10"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="10"/>
-                        <RowDefinition Height="180"/>
-                        <RowDefinition Height="10"/>
-                        <RowDefinition Height="120"/>
                     </Grid.RowDefinitions>
 
                     <!-- PDFs -->
@@ -98,82 +92,14 @@
                                     Command="{Binding BrowseStudentsFileCommand}"
                                     Style="{StaticResource DisableWhenStarted}"/>
                         </Grid>
+
+                        <Button Content="Create new students"
+                                Width="170"
+                                Margin="4,8,0,0"
+                                HorizontalAlignment="Left"
+                                Command="{Binding OpenCreateNewStudentsWindowCommand}"
+                                Style="{StaticResource DisableWhenStarted}"/>
                     </StackPanel>
-
-                    <!-- Import settings: separator, start row, columns -->
-                    <Grid Grid.Row="4" Margin="4,0,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140"/>
-                            <ColumnDefinition Width="120"/>
-                            <ColumnDefinition Width="20"/>
-                            <ColumnDefinition Width="120"/>
-                            <ColumnDefinition Width="120"/>
-                            <ColumnDefinition Width="20"/>
-                            <ColumnDefinition Width="120"/>
-                            <ColumnDefinition Width="160"/>
-                        </Grid.ColumnDefinitions>
-
-                        <TextBlock Grid.Column="0" Text="CSV Separator:" VerticalAlignment="Center" FontWeight="Bold"/>
-                        <ComboBox Grid.Column="1"
-                                  ItemsSource="{Binding SeparatorOptions}"
-                                  SelectedItem="{Binding SelectedSeparator, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                  IsEditable="True"/>
-
-                        <TextBlock Grid.Column="3" Text="Start row:" VerticalAlignment="Center" FontWeight="Bold"/>
-                        <TextBox Grid.Column="4"
-                                 Text="{Binding StartRow, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-
-                        <TextBlock Grid.Column="6" Text="Name column:" VerticalAlignment="Center" FontWeight="Bold"/>
-                        <ComboBox Grid.Column="7"
-                                  ItemsSource="{Binding AvailableColumns}"
-                                  SelectedItem="{Binding SelectedNameColumn, Mode=TwoWay}"
-                                  DisplayMemberPath="Name"/>
-                    </Grid>
-
-                    <!-- Live previews: raw rows + parsed students -->
-                    <Grid Grid.Row="6">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="10"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-
-                        <GroupBox Grid.Column="0" Header="Loaded rows preview" Padding="6">
-                            <DataGrid ItemsSource="{Binding PreviewRows}"
-                                      AutoGenerateColumns="True"
-                                      IsReadOnly="True"
-                                      CanUserAddRows="False"
-                                      CanUserDeleteRows="False"/>
-                        </GroupBox>
-
-                        <GroupBox Grid.Column="2" Header="Parsed students preview" Padding="6">
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="*"/>
-                                </Grid.RowDefinitions>
-
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                                    <TextBlock Text="Surname column (optional):" VerticalAlignment="Center" Margin="0,0,8,0" FontWeight="Bold"/>
-                                    <ComboBox Width="200"
-                                              ItemsSource="{Binding AvailableColumns}"
-                                              SelectedItem="{Binding SelectedSurnameColumn, Mode=TwoWay}"
-                                              DisplayMemberPath="Name"/>
-                                </StackPanel>
-
-                                <DataGrid Grid.Row="1"
-                                          ItemsSource="{Binding ParsedStudentsPreview}"
-                                          AutoGenerateColumns="False"
-                                          IsReadOnly="True"
-                                          CanUserAddRows="False"
-                                          CanUserDeleteRows="False">
-                                    <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
-                                    </DataGrid.Columns>
-                                </DataGrid>
-                            </Grid>
-                        </GroupBox>
-                    </Grid>
                 </Grid>
             </GroupBox>
 
