@@ -3,13 +3,11 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:EduVS.Views"
         mc:Ignorable="d"
-        Title="Export Test Results" Height="800" Width="920"
+        Title="Export Test Results" Height="900" Width="980"
         WindowStartupLocation="CenterOwner">
 
     <Window.Resources>
-        <!-- Disabled when IsStarted == true -->
         <Style x:Key="DisableWhenStarted" TargetType="Button">
             <Setter Property="IsEnabled" Value="True"/>
             <Style.Triggers>
@@ -19,7 +17,6 @@
             </Style.Triggers>
         </Style>
 
-        <!-- Enabled when IsStarted == true -->
         <Style x:Key="EnableWhenStarted" TargetType="Button">
             <Setter Property="IsEnabled" Value="False"/>
             <Style.Triggers>
@@ -37,37 +34,34 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Header -->
         <TextBlock Text="Export Test Results"
                    FontSize="24" FontWeight="SemiBold"
                    Margin="0,0,0,12"/>
 
-        <!-- Content -->
         <Grid Grid.Row="1">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
-                <!-- Files -->
                 <RowDefinition Height="12"/>
                 <RowDefinition Height="Auto"/>
-                <!-- START -->
                 <RowDefinition Height="12"/>
                 <RowDefinition Height="Auto"/>
-                <!-- Workspace -->
                 <RowDefinition Height="12"/>
                 <RowDefinition Height="*"/>
-                <!-- Preview -->
             </Grid.RowDefinitions>
 
-            <!-- FILES -->
+            <!-- FILES + STUDENT IMPORT PREVIEW -->
             <GroupBox Header="Files" Padding="12">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
-                        <!-- PDFs -->
-                        <RowDefinition Height="12"/>
-                        <!-- spacing -->
+                        <RowDefinition Height="10"/>
                         <RowDefinition Height="Auto"/>
-                        <!-- CSV -->
+                        <RowDefinition Height="10"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="10"/>
+                        <RowDefinition Height="180"/>
+                        <RowDefinition Height="10"/>
+                        <RowDefinition Height="120"/>
                     </Grid.RowDefinitions>
 
                     <!-- PDFs -->
@@ -78,7 +72,7 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <ListBox Grid.Column="0" ItemsSource="{Binding SelectedPdfPaths}" Height="100"/>
+                            <ListBox Grid.Column="0" ItemsSource="{Binding SelectedPdfPaths}" Height="80"/>
                             <Button Grid.Column="1"
                                     Content="Browse PDFs…"
                                     Margin="8,0,0,0"
@@ -87,54 +81,115 @@
                         </Grid>
                     </StackPanel>
 
-                    <!-- spacing -->
-                    <Border Grid.Row="1"/>
-
-                    <!-- CSV -->
+                    <!-- Students source file -->
                     <StackPanel Grid.Row="2">
-                        <TextBlock Text="Students CSV:" FontWeight="Bold"/>
+                        <TextBlock Text="Students file (CSV/Excel):" FontWeight="Bold"/>
                         <Grid Margin="4,6,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <TextBox Grid.Column="0"
-                                     Text="{Binding StudentsCsvPath}"
+                                     Text="{Binding StudentsFilePath}"
                                      IsReadOnly="True"/>
                             <Button Grid.Column="1"
                                     Content="Browse Students…"
                                     Margin="8,0,0,0"
-                                    Command="{Binding BrowseStudentsCsvCommand}"
+                                    Command="{Binding BrowseStudentsFileCommand}"
                                     Style="{StaticResource DisableWhenStarted}"/>
                         </Grid>
                     </StackPanel>
+
+                    <!-- Import settings: separator, start row, columns -->
+                    <Grid Grid.Row="4" Margin="4,0,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="20"/>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="20"/>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="160"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0" Text="CSV Separator:" VerticalAlignment="Center" FontWeight="Bold"/>
+                        <ComboBox Grid.Column="1"
+                                  ItemsSource="{Binding SeparatorOptions}"
+                                  SelectedItem="{Binding SelectedSeparator, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                  IsEditable="True"/>
+
+                        <TextBlock Grid.Column="3" Text="Start row:" VerticalAlignment="Center" FontWeight="Bold"/>
+                        <TextBox Grid.Column="4"
+                                 Text="{Binding StartRow, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+                        <TextBlock Grid.Column="6" Text="Name column:" VerticalAlignment="Center" FontWeight="Bold"/>
+                        <ComboBox Grid.Column="7"
+                                  ItemsSource="{Binding AvailableColumns}"
+                                  SelectedItem="{Binding SelectedNameColumn, Mode=TwoWay}"
+                                  DisplayMemberPath="Name"/>
+                    </Grid>
+
+                    <!-- Live previews: raw rows + parsed students -->
+                    <Grid Grid.Row="6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <GroupBox Grid.Column="0" Header="Loaded rows preview" Padding="6">
+                            <DataGrid ItemsSource="{Binding PreviewRows}"
+                                      AutoGenerateColumns="True"
+                                      IsReadOnly="True"
+                                      CanUserAddRows="False"
+                                      CanUserDeleteRows="False"/>
+                        </GroupBox>
+
+                        <GroupBox Grid.Column="2" Header="Parsed students preview" Padding="6">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                    <TextBlock Text="Surname column (optional):" VerticalAlignment="Center" Margin="0,0,8,0" FontWeight="Bold"/>
+                                    <ComboBox Width="200"
+                                              ItemsSource="{Binding AvailableColumns}"
+                                              SelectedItem="{Binding SelectedSurnameColumn, Mode=TwoWay}"
+                                              DisplayMemberPath="Name"/>
+                                </StackPanel>
+
+                                <DataGrid Grid.Row="1"
+                                          ItemsSource="{Binding ParsedStudentsPreview}"
+                                          AutoGenerateColumns="False"
+                                          IsReadOnly="True"
+                                          CanUserAddRows="False"
+                                          CanUserDeleteRows="False">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Grid>
+                        </GroupBox>
+                    </Grid>
                 </Grid>
             </GroupBox>
 
-            <!-- spacing -->
-            <Border Grid.Row="1"/>
-
-            <!-- START + ABORT (centered) -->
+            <!-- START + ABORT -->
             <Grid Grid.Row="2">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-
-                <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                     <Button Content="START"
-                Width="120" Height="34"
-                Command="{Binding StartCommand}"
-                Style="{StaticResource DisableWhenStarted}"/>
+                            Width="120" Height="34"
+                            Command="{Binding StartCommand}"
+                            Style="{StaticResource DisableWhenStarted}"/>
                     <Button Content="ABORT"
-                Width="120" Height="34" Margin="12,0,0,0"
-                Command="{Binding AbortCommand}"
-                Style="{StaticResource EnableWhenStarted}"/>
+                            Width="120" Height="34" Margin="12,0,0,0"
+                            Command="{Binding AbortCommand}"
+                            Style="{StaticResource EnableWhenStarted}"/>
                 </StackPanel>
             </Grid>
-
-            <!-- spacing -->
-            <Border Grid.Row="3"/>
 
             <!-- WORKSPACE -->
             <GroupBox Grid.Row="4" Header="Workspace" Padding="12">
@@ -161,24 +216,17 @@
                 </DockPanel>
             </GroupBox>
 
-            <!-- spacing -->
-            <Border Grid.Row="5"/>
-
-            <!-- TEST IDs (left) + PREVIEW (right) -->
+            <!-- TEST IDs + PREVIEW -->
             <Grid Grid.Row="6">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="100"/>
-                    <!-- Test IDs -->
                     <ColumnDefinition Width="12"/>
-                    <!-- spacing -->
                     <ColumnDefinition Width="*"/>
-                    <!-- Preview -->
                 </Grid.ColumnDefinitions>
 
-                <!-- TEST IDs -->
                 <GroupBox Header="Test IDs" Padding="12" Grid.Column="0">
                     <ListBox ItemsSource="{Binding Tests}"
-                        SelectedItem="{Binding SelectedTest, Mode=TwoWay}">
+                             SelectedItem="{Binding SelectedTest, Mode=TwoWay}">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding TestId}" HorizontalAlignment="Center"/>
@@ -187,21 +235,19 @@
                     </ListBox>
                 </GroupBox>
 
-                <!-- right: Preview -->
                 <GroupBox Header="Preview" Padding="12" Grid.Column="2">
                     <Border BorderBrush="#DDD" BorderThickness="1"
-            HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                            HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                         <Image Source="{Binding SelectedTest.NameBoxBitmap}"
-                        Stretch="Uniform"
-                         HorizontalAlignment="Stretch"
-                        VerticalAlignment="Stretch"
-                        RenderOptions.BitmapScalingMode="HighQuality"/>
+                               Stretch="Uniform"
+                               HorizontalAlignment="Stretch"
+                               VerticalAlignment="Stretch"
+                               RenderOptions.BitmapScalingMode="HighQuality"/>
                     </Border>
                 </GroupBox>
             </Grid>
         </Grid>
 
-        <!-- Footer -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
             <Button Content="Export" Width="110" Height="32" Margin="0,12,0,0"
                     Command="{Binding ExportCommand}"
