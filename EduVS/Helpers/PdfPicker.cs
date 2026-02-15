@@ -29,11 +29,11 @@ namespace EduVS.Helpers
             return ok == true ? dlg.FileNames : Enumerable.Empty<string>();
         }
 
-        public static string? PickCsv()
+        public static string? PickStudentFile()
         {
             var dlg = new Microsoft.Win32.OpenFileDialog
             {
-                Filter = "CSV files (*.csv)|*.csv",
+                Filter = "Student files (*.csv;*.txt;*.xlsx;*.xls)|*.csv;*.txt;*.xlsx;*.xls|CSV files (*.csv;*.txt)|*.csv;*.txt|Excel files (*.xlsx;*.xls)|*.xlsx;*.xls",
                 DefaultExt = ".csv",
                 Multiselect = false
             };
