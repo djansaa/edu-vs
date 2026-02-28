@@ -1,6 +1,7 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EduVS.Helpers;
+using EduVS.Models;
 using Microsoft.Extensions.Logging;
 using System.Collections.ObjectModel;
 using System.Data;
@@ -16,6 +17,7 @@ namespace EduVS.ViewModels
         [ObservableProperty] private string selectedSeparator = ";";
         [ObservableProperty] private int startRow = 1;
         [ObservableProperty] private bool useCombinedNameColumn = true;
+        [ObservableProperty] private bool swapSurnameAndNameColumns;
 
         [ObservableProperty] private ObservableCollection<CsvColumnOption> availableColumns = new();
         [ObservableProperty] private CsvColumnOption? selectedCombinedNameColumn;
@@ -23,7 +25,7 @@ namespace EduVS.ViewModels
         [ObservableProperty] private CsvColumnOption? selectedSurnameColumn;
 
         [ObservableProperty] private DataView? previewRows;
-        [ObservableProperty] private ObservableCollection<string> parsedStudents = new();
+        [ObservableProperty] private ObservableCollection<StudentData> parsedStudents = new();
         [ObservableProperty] private string className = string.Empty;
 
         private readonly List<string[]> _filteredRows = new();
@@ -36,6 +38,7 @@ namespace EduVS.ViewModels
         partial void OnSelectedSeparatorChanged(string value) => RefreshPreview();
         partial void OnStartRowChanged(int value) => RefreshPreview();
         partial void OnUseCombinedNameColumnChanged(bool value) => BuildParsedStudentsPreview();
+        partial void OnSwapSurnameAndNameColumnsChanged(bool value) => BuildParsedStudentsPreview();
         partial void OnSelectedCombinedNameColumnChanged(CsvColumnOption? value) => BuildParsedStudentsPreview();
         partial void OnSelectedNameColumnChanged(CsvColumnOption? value) => BuildParsedStudentsPreview();
         partial void OnSelectedSurnameColumnChanged(CsvColumnOption? value) => BuildParsedStudentsPreview();
@@ -95,7 +98,11 @@ namespace EduVS.ViewModels
             var outputPath = PdfPicker.PickCsvSavePath($"{suggestedName}.csv");
             if (outputPath is null) return;
 
-            File.WriteAllLines(outputPath, ParsedStudents.Select(EscapeCsvValue), Encoding.UTF8);
+            var lines = new List<string> { "\"Surname\";\"Name\"" };
+            lines.AddRange(ParsedStudents.Select(student =>
+                $"{EscapeCsvValue(student.Surname)};{EscapeCsvValue(student.Name)}"));
+
+            File.WriteAllLines(outputPath, lines, Encoding.UTF8);
 
             MessageBox.Show("Students CSV file has been created.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
             window?.Close();
@@ -104,7 +111,7 @@ namespace EduVS.ViewModels
         private void RefreshPreview()
         {
             PreviewRows = null;
-            ParsedStudents = new ObservableCollection<string>();
+            ParsedStudents = new ObservableCollection<StudentData>();
             AvailableColumns = new ObservableCollection<CsvColumnOption>();
             _filteredRows.Clear();
 
@@ -172,50 +179,122 @@ namespace EduVS.ViewModels
         {
             if (!_filteredRows.Any())
             {
-                ParsedStudents = new ObservableCollection<string>();
+                ParsedStudents = new ObservableCollection<StudentData>();
                 return;
             }
 
-            var students = new List<string>();
+            var students = new List<StudentData>();
             foreach (var row in _filteredRows)
             {
-                string fullName;
-                if (UseCombinedNameColumn)
+                if (TryBuildStudent(row, out var student))
                 {
-                    if (SelectedCombinedNameColumn is null) continue;
-                    fullName = CsvHelper.GetValueAt(row, SelectedCombinedNameColumn.Index);
-                }
-                else
-                {
-                    if (SelectedNameColumn is null) continue;
-                    var firstName = CsvHelper.GetValueAt(row, SelectedNameColumn.Index);
-                    var surname = SelectedSurnameColumn is null ? string.Empty : CsvHelper.GetValueAt(row, SelectedSurnameColumn.Index);
-                    fullName = string.Join(" ", new[] { firstName, surname }.Where(x => !string.IsNullOrWhiteSpace(x))).Trim();
-                }
-
-                if (!string.IsNullOrWhiteSpace(fullName))
-                {
-                    students.Add(fullName);
+                    students.Add(student);
                 }
             }
 
-            ParsedStudents = new ObservableCollection<string>(students);
+            ParsedStudents = new ObservableCollection<StudentData>(students);
+        }
+
+        private bool TryBuildStudent(string[] row, out StudentData student)
+        {
+            student = new StudentData();
+
+            if (UseCombinedNameColumn)
+            {
+                if (SelectedCombinedNameColumn is null)
+                {
+                    return false;
+                }
+
+                var fullName = CsvHelper.GetValueAt(row, SelectedCombinedNameColumn.Index);
+                var (combinedSurname, combinedName) = SplitCombinedName(fullName);
+                if (string.IsNullOrWhiteSpace(combinedSurname) && string.IsNullOrWhiteSpace(combinedName))
+                {
+                    return false;
+                }
+
+                student = new StudentData
+                {
+                    Surname = combinedSurname,
+                    Name = combinedName,
+                    TestId = null
+                };
+                return true;
+            }
+
+            if (SelectedNameColumn is null && SelectedSurnameColumn is null)
+            {
+                return false;
+            }
+
+            var name = SelectedNameColumn is null ? string.Empty : CsvHelper.GetValueAt(row, SelectedNameColumn.Index);
+            var surname = SelectedSurnameColumn is null ? string.Empty : CsvHelper.GetValueAt(row, SelectedSurnameColumn.Index);
+            if (string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(surname))
+            {
+                return false;
+            }
+
+            student = new StudentData
+            {
+                Name = name,
+                Surname = surname,
+                TestId = null
+            };
+            return true;
+        }
+
+        private (string Surname, string Name) SplitCombinedName(string fullName)
+        {
+            var parts = fullName
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            if (parts.Length == 0)
+            {
+                return (string.Empty, string.Empty);
+            }
+
+            if (parts.Length == 1)
+            {
+                return SwapSurnameAndNameColumns
+                    ? (string.Empty, parts[0])
+                    : (parts[0], string.Empty);
+            }
+
+            var firstValue = parts[0];
+            var remainingValue = string.Join(" ", parts.Skip(1));
+
+            return SwapSurnameAndNameColumns
+                ? (remainingValue, firstValue)
+                : (firstValue, remainingValue);
         }
 
         private static List<(int RowNumber, string[] Values)> LoadRowsFromCsv(string path, string separator)
         {
             var rows = new List<(int RowNumber, string[] Values)>();
-            var encoding = Encoding.GetEncoding(1250);
             var delimiter = CsvHelper.ResolveDelimiter(separator);
 
-            var allLines = File.ReadAllLines(path, encoding);
-            for (var i = 0; i < allLines.Length; i++)
+            using var reader = new StreamReader(path, Encoding.GetEncoding(1250), detectEncodingFromByteOrderMarks: true);
+            var rowNumber = 0;
+            while (!reader.EndOfStream)
             {
-                var values = allLines[i].Split(delimiter).Select(v => v.Trim()).ToArray();
-                rows.Add((i + 1, values));
+                var line = reader.ReadLine() ?? string.Empty;
+                rowNumber++;
+                var values = line.Split(delimiter).Select(NormalizeCsvCell).ToArray();
+                rows.Add((rowNumber, values));
             }
 
             return rows;
+        }
+
+        private static string NormalizeCsvCell(string value)
+        {
+            var normalized = value.Trim();
+            if (normalized.Length >= 2 && normalized.StartsWith('"') && normalized.EndsWith('"'))
+            {
+                normalized = normalized[1..^1].Replace("\"\"", "\"");
+            }
+
+            return normalized.Trim();
         }
 
         private static string SanitizeFileName(string name)

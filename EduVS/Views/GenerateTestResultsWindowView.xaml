@@ -96,7 +96,7 @@
                         <Button Content="Create new students"
                                 Width="170"
                                 Margin="4,8,0,0"
-                                HorizontalAlignment="Left"
+                                HorizontalAlignment="right"
                                 Command="{Binding OpenCreateNewStudentsWindowCommand}"
                                 Style="{StaticResource DisableWhenStarted}"/>
                     </StackPanel>
@@ -129,7 +129,7 @@
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <TextBlock>
-                                      <Run Text="{Binding Name}"/>
+                                      <Run Text="{Binding DisplayName, Mode=OneWay}"/>
                                       <Run Text="{Binding TestId, StringFormat= #{0}, TargetNullValue=''}"/>
                                     </TextBlock>
                                 </DataTemplate>

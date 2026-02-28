@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using ClosedXML.Excel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EduVS.Helpers;
 using EduVS.Models;
@@ -9,7 +10,6 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Text;
 using System.Windows;
-using ClosedXML.Excel;
 
 namespace EduVS.ViewModels
 {
@@ -93,11 +93,9 @@ namespace EduVS.ViewModels
 
             Students = new ObservableCollection<StudentData>(parsedStudents);
 
-            // 1) Merge selected PDFs into one temporary file.
             var temp = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"combined_{Guid.NewGuid():N}.pdf");
             _combinedPdfPath = _pdf.MergePdfs(SelectedPdfPaths, temp);
 
-            // 2) Scan merged PDF and discover tests/pages.
             var qrTopRight = new System.Drawing.RectangleF(0.55f, 0f, 0.45f, 0.45f);
             var nameBoxTL = new System.Drawing.RectangleF(0.10f, 0.0095f, 0.49f, 0.06f);
 
@@ -129,13 +127,10 @@ namespace EduVS.ViewModels
                 var students = new List<StudentData>();
                 foreach (var row in rows)
                 {
-                    var name = BuildNameFromRow(row.Values);
-                    if (string.IsNullOrWhiteSpace(name))
+                    if (TryBuildStudent(row.Values, out var student))
                     {
-                        continue;
+                        students.Add(student);
                     }
-
-                    students.Add(new StudentData { Name = name, TestId = null });
                 }
 
                 return students;
@@ -147,45 +142,162 @@ namespace EduVS.ViewModels
             }
         }
 
-        private static string BuildNameFromRow(string[] values)
+        private static bool TryBuildStudent(string[] values, out StudentData student)
         {
+            student = new StudentData();
+
             var nonEmptyValues = values
-                .Select(v => v?.Trim() ?? string.Empty)
+                .Select(v => NormalizeCsvCell(v ?? string.Empty))
                 .Where(v => !string.IsNullOrWhiteSpace(v))
-                .Take(2)
                 .ToArray();
 
-            if (nonEmptyValues.Length == 0)
+            if (nonEmptyValues.Length == 0 || IsHeaderRow(nonEmptyValues))
             {
-                return string.Empty;
+                return false;
             }
 
-            return string.Join(" ", nonEmptyValues);
+            if (TryParseStructuredTwoColumnRow(nonEmptyValues, out student))
+            {
+                return true;
+            }
+
+            if (TryParseSeparatedRow(nonEmptyValues, out student))
+            {
+                return true;
+            }
+
+            student = BuildStudentFromCombinedValue(nonEmptyValues[0]);
+            return !string.IsNullOrWhiteSpace(student.Name) || !string.IsNullOrWhiteSpace(student.Surname);
+        }
+
+        private static bool IsHeaderRow(string[] values)
+        {
+            if (values.Length < 2)
+            {
+                return false;
+            }
+
+            var first = NormalizeHeaderValue(values[0]);
+            var second = NormalizeHeaderValue(values[1]);
+
+            return (first, second) is ("surname", "name")
+                or ("prijmeni", "jmeno")
+                or ("last name", "first name");
+        }
+
+        private static bool TryParseStructuredTwoColumnRow(string[] values, out StudentData student)
+        {
+            student = new StudentData();
+            if (values.Length < 2)
+            {
+                return false;
+            }
+
+            var first = values[0];
+            var second = values[1];
+            if (LooksLikeOrdinal(first))
+            {
+                return false;
+            }
+
+            student = new StudentData
+            {
+                Surname = first,
+                Name = second,
+                TestId = null
+            };
+
+            return !string.IsNullOrWhiteSpace(student.Surname) || !string.IsNullOrWhiteSpace(student.Name);
+        }
+
+        private static bool TryParseSeparatedRow(string[] values, out StudentData student)
+        {
+            student = new StudentData();
+
+            var candidateValues = values;
+            if (LooksLikeOrdinal(values[0]))
+            {
+                candidateValues = values.Skip(1).ToArray();
+            }
+
+            if (candidateValues.Length < 2)
+            {
+                return false;
+            }
+
+            student = new StudentData
+            {
+                Surname = candidateValues[0],
+                Name = candidateValues[1],
+                TestId = null
+            };
+
+            return !string.IsNullOrWhiteSpace(student.Surname) || !string.IsNullOrWhiteSpace(student.Name);
+        }
+
+        private static StudentData BuildStudentFromCombinedValue(string value)
+        {
+            var parts = value
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            if (parts.Length == 0)
+            {
+                return new StudentData();
+            }
+
+            if (parts.Length == 1)
+            {
+                return new StudentData { Surname = parts[0], Name = string.Empty, TestId = null };
+            }
+
+            return new StudentData
+            {
+                Surname = parts[0],
+                Name = string.Join(" ", parts.Skip(1)),
+                TestId = null
+            };
+        }
+
+        private static bool LooksLikeOrdinal(string value) => int.TryParse(value, out _);
+
+        private static string NormalizeHeaderValue(string value)
+        {
+            return value.Trim().Trim('"').ToLowerInvariant();
         }
 
         private static List<(int RowNumber, string[] Values)> LoadRowsFromCsv(string path)
         {
             var rows = new List<(int, string[])>();
-            // Existing datasets are commonly exported as windows-1250.
-            var enc = Encoding.GetEncoding(1250);
-            var allLines = File.ReadAllLines(path, enc);
+            using var reader = new StreamReader(path, Encoding.GetEncoding(1250), detectEncodingFromByteOrderMarks: true);
+            var rowNumber = 0;
 
-            for (var i = 0; i < allLines.Length; i++)
+            while (!reader.EndOfStream)
             {
-                var line = allLines[i];
-                var split = line.Split(new[] { ';', ',', '	', '|' }, StringSplitOptions.None)
-                    .Select(x => x.Trim())
+                var line = reader.ReadLine() ?? string.Empty;
+                rowNumber++;
+                var split = line.Split(new[] { ';', ',', '\t', '|' }, StringSplitOptions.None)
+                    .Select(NormalizeCsvCell)
                     .ToArray();
-                rows.Add((i + 1, split));
+                rows.Add((rowNumber, split));
             }
 
             return rows;
         }
 
+        private static string NormalizeCsvCell(string value)
+        {
+            var normalized = value.Trim();
+            if (normalized.Length >= 2 && normalized.StartsWith('"') && normalized.EndsWith('"'))
+            {
+                normalized = normalized[1..^1].Replace("\"\"", "\"");
+            }
+
+            return normalized.Trim();
+        }
+
         private static List<(int RowNumber, string[] Values)> LoadRowsFromExcel(string path)
         {
             var rows = new List<(int, string[])>();
-            // Use first worksheet as source for import preview.
             using var workbook = new XLWorkbook(path);
             var worksheet = workbook.Worksheets.First();
             var usedRange = worksheet.RangeUsed();
@@ -242,7 +354,7 @@ namespace EduVS.ViewModels
             }
 
             var toExport = Students.Where(s => s.TestId.HasValue)
-                                   .Select(s => (s.Name, s.TestId!.Value))
+                                   .Select(s => (s.DisplayName, s.TestId!.Value))
                                    .ToList();
             if (toExport.Count == 0)
             {
@@ -256,5 +368,4 @@ namespace EduVS.ViewModels
             _pdf.ExportPerStudent(_combinedPdfPath, _pagesByTestId, toExport, outputFolder);
         }
     }
-
 }
