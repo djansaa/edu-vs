@@ -172,47 +172,21 @@ namespace EduVS.Helpers
 
             // source pdf
             using var src = PdfReader.Open(inputPath, PdfDocumentOpenMode.Import);
-
-            var reader = new ZXing.Windows.Compatibility.BarcodeReader
-            {
-                AutoRotate = false,
-                Options = new DecodingOptions
-                {
-                    TryHarder = true,
-                    PossibleFormats = new[] { BarcodeFormat.QR_CODE },
-                    CharacterSet = "UTF-8"
-                }
-            };
+            var reader = CreateQrReader();
 
             // for each page -> try decode qr
             for (int pageIndex = 0; pageIndex < src.PageCount; pageIndex++)
             {
-                string? qrText;
-                int rotation;
+                var scanResult = ScanPageQrData(inputPath, pageIndex, reader);
 
-                // render page once per loop
-                using (var sk = PdfPageToSKBitmap(inputPath, pageIndex))
-                using (var full = SKBitmapToBitmap(sk))
+                if (scanResult.QrData is null)
                 {
-                    (qrText, rotation) = TryDecodePage(reader, full);
-                }
-
-                QrCodeData qcd;
-
-                // if qr not found, create dummy
-                if (qrText == null)
-                {
-                    // TODO: jak je možné, že to nerozpoznalo qr kód?? -> nechat uživatele rozhodnout, kam zařadit stránku (A/B/gg)
-
                     Debug.WriteLine($"Page: {pageIndex + 1} - QR NOT FOUND");
-                } 
+                }
                 else
                 {
-                    qcd = QrCodeData.Parse(qrText);
-
-                    Debug.WriteLine($"Page: {pageIndex + 1} - QR: TestId={qcd.TestId}, GroupId={qcd.GroupId}, TestName={qcd.TestName}, TestDate={qcd.TestDate:yyyy-MM-dd}, Page={qcd.Page} | Rotation={rotation}");
-
-                    outputPagesData.Add((pageIndex, rotation, qcd));
+                    Debug.WriteLine($"Page: {pageIndex + 1} - QR: TestId={scanResult.QrData.TestId}, GroupId={scanResult.QrData.GroupId}, TestName={scanResult.QrData.TestName}, TestDate={scanResult.QrData.TestDate:yyyy-MM-dd}, Page={scanResult.QrData.Page} | Rotation={scanResult.Rotation}");
+                    outputPagesData.Add((pageIndex, scanResult.Rotation, scanResult.QrData));
                 }
             }
 
@@ -249,6 +223,28 @@ namespace EduVS.Helpers
                 var pagesMarged = outputPagesData.ToList();
                 CopyTestCheckPages(src, outputPathA, pagesMarged);
             }
+        }
+
+        public (int PageCount, QrCodeData? MetadataQr) ReadTestCheckPdfInfo(string inputPath)
+        {
+            if (string.IsNullOrEmpty(inputPath) || !File.Exists(inputPath))
+            {
+                throw new ArgumentException("Input PDF path is invalid.", nameof(inputPath));
+            }
+
+            using var src = PdfReader.Open(inputPath, PdfDocumentOpenMode.Import);
+            var reader = CreateQrReader();
+
+            for (int pageIndex = 0; pageIndex < src.PageCount; pageIndex++)
+            {
+                var scanResult = ScanPageQrData(inputPath, pageIndex, reader);
+                if (scanResult.QrData is not null)
+                {
+                    return (src.PageCount, scanResult.QrData);
+                }
+            }
+
+            return (src.PageCount, null);
         }
 
         private void CopyTestCheckPages(PdfDocument src, string outputPath, IEnumerable<(int pageId, int rotation, QrCodeData qr)> tcp)
@@ -290,6 +286,39 @@ namespace EduVS.Helpers
             if (text != null) return (text, 180);
 
             return (null, 0);
+        }
+
+        private (int Rotation, QrCodeData? QrData) ScanPageQrData(string inputPath, int pageIndex, BarcodeReader reader)
+        {
+            string? qrText;
+            int rotation;
+
+            using (var sk = PdfPageToSKBitmap(inputPath, pageIndex))
+            using (var full = SKBitmapToBitmap(sk))
+            {
+                (qrText, rotation) = TryDecodePage(reader, full);
+            }
+
+            if (qrText is null || !QrCodeData.TryParse(qrText, out var qrData) || qrData is null)
+            {
+                return (rotation, null);
+            }
+
+            return (rotation, qrData);
+        }
+
+        private BarcodeReader CreateQrReader()
+        {
+            return new ZXing.Windows.Compatibility.BarcodeReader
+            {
+                AutoRotate = false,
+                Options = new DecodingOptions
+                {
+                    TryHarder = true,
+                    PossibleFormats = new[] { BarcodeFormat.QR_CODE },
+                    CharacterSet = "UTF-8"
+                }
+            };
         }
 
         private string? TryDecodeRegion(BarcodeReader reader, Bitmap full, float relW, float relH)

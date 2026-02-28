@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:EduVS.Views"
         mc:Ignorable="d"
-        Title="PrepareTestCheckWindowView" Height="500" Width="800">
+        Title="Prepare Test Check" Height="560" Width="800">
     <Grid Margin="16" >
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -20,20 +20,62 @@
         <!-- Source PDF -->
         <GroupBox Header="Source PDF" Grid.Row="0" Padding="12">
             <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="12"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="12"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="8"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <TextBox Grid.Column="0"
+                <TextBox Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
                          Text="{Binding PdfPath}"
                          IsReadOnly="True"
                          VerticalContentAlignment="Center"
                          MinWidth="360"/>
-                <Button Grid.Column="1" Content="Browse…"
+                <Button Grid.Row="0" Grid.Column="2" Content="Browse…"
                         Margin="8,0,0,0"
                         Width="100"
                         Command="{Binding BrowsePdfCommand}"/>
+
+                <Button Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3"
+                        Content="Read PDF Info"
+                        HorizontalAlignment="Left"
+                        Width="140"
+                        IsEnabled="{Binding CanReadPdfInfo}"
+                        Command="{Binding ReadPdfInfoCommand}"/>
+
+                <TextBlock Grid.Row="4" Grid.Column="0"
+                           Text="Test subject:"
+                           Margin="0,0,8,0"
+                           VerticalAlignment="Center"/>
+                <TextBox Grid.Row="4" Grid.Column="1"
+                         Text="{Binding DetectedTestSubject}"
+                         IsReadOnly="True"
+                         IsEnabled="False"
+                         VerticalContentAlignment="Center"/>
+
+                <TextBlock Grid.Row="6" Grid.Column="0"
+                           Text="Test name:"
+                           Margin="0,0,8,0"
+                           VerticalAlignment="Center"/>
+                <TextBox Grid.Row="6" Grid.Column="1"
+                         Text="{Binding DetectedTestName}"
+                         IsReadOnly="True"
+                         IsEnabled="False"
+                         VerticalContentAlignment="Center"/>
+
+                <TextBlock Grid.Row="4" Grid.Column="2"
+                           Margin="16,0,0,0"
+                           VerticalAlignment="Top"
+                           Text="{Binding SourcePdfPageCount, StringFormat=Pages: {0}}"/>
             </Grid>
         </GroupBox>
 
@@ -41,7 +83,8 @@
         <Border Grid.Row="1"/>
 
         <!-- Output mode -->
-        <GroupBox Header="Output mode" Grid.Row="2" Padding="12">
+        <GroupBox Header="Output mode" Grid.Row="2" Padding="12"
+                  IsEnabled="{Binding CanConfigureOutput}">
             <StackPanel>
                 <RadioButton Content="Split output into separate PDFs by group (A.pdf, B.pdf)"
                              IsChecked="{Binding IsSplitByGroup, Mode=TwoWay}"/>
@@ -54,7 +97,8 @@
         <Border Grid.Row="3"/>
 
         <!-- Sorting -->
-        <GroupBox Header="Page sorting in output" Grid.Row="4" Padding="12">
+        <GroupBox Header="Page sorting in output" Grid.Row="4" Padding="12"
+                  IsEnabled="{Binding CanConfigureOutput}">
             <StackPanel>
                 <RadioButton Content="Sort by page number (1, 1, 1, 2, 2, 2 ...)"
                              IsChecked="{Binding SortByPageNumber, Mode=TwoWay}"/>
@@ -63,7 +107,8 @@
             </StackPanel>
         </GroupBox>
 
-        <GroupBox Header="Output PDFs" Grid.Row="5" Padding="12">
+        <GroupBox Header="Output PDFs" Grid.Row="5" Padding="12"
+                  IsEnabled="{Binding CanConfigureOutput}">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -130,6 +175,7 @@
         <StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Right">
             <Button Content="Export" Width="110" Height="32" Margin="0,12,8,0"
                     IsDefault="True"
+                    IsEnabled="{Binding CanConfigureOutput}"
                     Command="{Binding ExportCommand}"/>
         </StackPanel>
     </Grid>
