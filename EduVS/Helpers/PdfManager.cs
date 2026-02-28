@@ -7,6 +7,7 @@ using SkiaSharp;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Text;
 using System.Windows.Media.Imaging;
 using ZXing;
 using ZXing.Common;
@@ -87,9 +88,9 @@ namespace EduVS.Helpers
 
                         XUnit w = page.Width;
                         XUnit h = page.Height;
-                        double margin = 25;
-                        double qrSize = 100;
-                        double top = margin;
+                        double margin = 35;
+                        double qrSize = 55;
+                        double top = 25;
 
                         using var gfx = XGraphics.FromPdfPage(page, XGraphicsPdfPageOptions.Append);
 
@@ -106,29 +107,35 @@ namespace EduVS.Helpers
                             var dateText = $"datum: {testDate:yyyy-MM-dd}";
                             gfx.DrawString(dateText, fontBold, XBrushes.Black, new XPoint(margin + 345, top + 17));
 
+                            // add to pdf
+                            gfx.DrawString($"[{groupLetter}{testCount}] | {testSubject} | {testName}", fontBold, XBrushes.Black, new XPoint(margin, top + 43));
+
+
+                            /* OLD CODE
                             // test subject + group
                             var centerX = w / 2.0;
                             gfx.DrawString($"{testSubject} [{groupLetter}]", fontBoldBigger, XBrushes.Black, new XPoint(centerX, top + 55), XStringFormats.Center);
 
                             // test name
                             gfx.DrawString($"{testName}", fontBoldBigger, XBrushes.Black, new XPoint(centerX, top + 75), XStringFormats.Center);
+                            */
                         }
 
                         // ##################### QR CODE #####################
 
                         // qr code data
-                        var qrData = $"TESTID:{testCount}|GROUPID:{groupLetter}|TESTSUBJECT:{testSubject}|TESTNAME:{testName}|TESTDATE:{testDate}|PAGE:{p + 1}";
+                        // $"{testCount}|{groupLetter}|{testSubject}|{testName}|{testDate:yyyy-MM-dd}|{p + 1}";
+                        var qrData = $"{testCount}|{groupLetter}|{testSubject}|{testName}|{testDate:yyyy-MM-dd}|{p + 1}";
 
                         int dpi = 300;
-                        int pxSize = (int)Math.Round(Math.Min(qrSize, qrSize) * dpi / 72.0);
-                        int ppm = Math.Max(4, pxSize / 33);
+                        int pxSize = (int)Math.Round(qrSize * dpi / 72.0);
 
                         // create qr code png
-                        var png = qrCodeManager.CreateQrPng(qrData, marginModules: 5);
+                        var png = qrCodeManager.CreateQrPng(qrData, sizePx: pxSize, marginModules: 2);
                         using var ms = new MemoryStream(png);
                         using var img = XImage.FromStream(ms);
 
-                        var qrRect = new XRect(w - margin - qrSize + 10, top - 10, qrSize, qrSize);
+                        var qrRect = new XRect(w - margin - qrSize, top - 10, qrSize, qrSize);
 
                         // draw qr code
                         gfx.DrawImage(img, qrRect);
@@ -266,7 +273,7 @@ namespace EduVS.Helpers
             dst.Save(outputPath);
         }
 
-        private (string? text, int rotation) TryDecodePage(BarcodeReader reader, Bitmap full, float relW = 0.6f, float relH = 0.6f)
+        private (string? text, int rotation) TryDecodePage(BarcodeReader reader, Bitmap full, float relW = 0.2f, float relH = 0.15f)
         {
             // 1) ROI on original
             var text = TryDecodeRegion(reader, full, relW, relH);
@@ -324,6 +331,14 @@ namespace EduVS.Helpers
         private string? TryDecodeRegion(BarcodeReader reader, Bitmap full, float relW, float relH)
         {
             using var roi = CropTopRight(full, relW, relH);
+
+            /* 
+            // export ROI as PNG (always, or gate it with a condition)
+            var fileName = $"roi_{DateTime.Now:yyyyMMdd_HHmmss_fff}.png";
+            var path = Path.Combine(AppContext.BaseDirectory, fileName);
+            roi.Save(path, System.Drawing.Imaging.ImageFormat.Png);
+            */
+
             var result = reader.Decode(roi);
             return result?.Text;
         }
@@ -404,6 +419,8 @@ namespace EduVS.Helpers
                     using var rot = RotateSK180(skb);
                     qr = TryDecodeQr(reader, rot, qrTopRightRel);
                 }
+
+                // TODO: DO SOMETHING!!!
                 if (qr is null) continue;
 
                 if (!QrCodeData.TryParse(qr, out var q) || q is null) continue;

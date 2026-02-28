@@ -10,6 +10,8 @@ namespace EduVS.ViewModels
 {
     public partial class GenerateTestViewModel : BaseViewModel
     {
+        private const int MaxSubjectAndNameChars = 52;
+
         [ObservableProperty] private string? testSubject;
         [ObservableProperty] private string? testName;
         [ObservableProperty] private DateTime testDate;
@@ -31,6 +33,16 @@ namespace EduVS.ViewModels
             BrowseTemplateACommand = new RelayCommand(BrowseTemplateA);
             BrowseTemplateBCommand = new RelayCommand(BrowseTemplateB);
             ExportCommand = new RelayCommand(ExportTests);
+        }
+
+        partial void OnTestSubjectChanged(string? value)
+        {
+            EnforceQrPayloadBudget(isSubjectChanged: true);
+        }
+
+        partial void OnTestNameChanged(string? value)
+        {
+            EnforceQrPayloadBudget(isSubjectChanged: false);
         }
 
         private void BrowseTemplateA()
@@ -67,6 +79,13 @@ namespace EduVS.ViewModels
             if (string.IsNullOrEmpty(TestName))
             {
                 MessageBox.Show("Test name is empty.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            if ((TestSubject?.Length ?? 0) + (TestName?.Length ?? 0) > MaxSubjectAndNameChars)
+            {
+                var currentLength = (TestSubject?.Length ?? 0) + (TestName?.Length ?? 0);
+                var overflow = currentLength - MaxSubjectAndNameChars;
+                MessageBox.Show($"Test subject and test name can have at most {MaxSubjectAndNameChars} characters combined for the QR code.\nReduce subject/name by {overflow} characters.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
             // templateAPath
@@ -112,6 +131,25 @@ namespace EduVS.ViewModels
             pdfManager.GenerateTestPrintTemplate(outputPath, TestSubject, TestName, TestDate.ToString("yyyy-MM-dd"), TemplateAPath, TemplateACount, TemplateBPath, TemplateBCount);
 
             MessageBox.Show("Test PDF generated successfully.", "Export Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void EnforceQrPayloadBudget(bool isSubjectChanged)
+        {
+            var subject = TestSubject ?? string.Empty;
+            var name = TestName ?? string.Empty;
+            var totalLength = subject.Length + name.Length;
+
+            if (totalLength <= MaxSubjectAndNameChars) return;
+
+            var overflow = totalLength - MaxSubjectAndNameChars;
+            if (isSubjectChanged)
+            {
+                TestSubject = subject[..Math.Max(0, subject.Length - overflow)];
+            }
+            else
+            {
+                TestName = name[..Math.Max(0, name.Length - overflow)];
+            }
         }
     }
 }

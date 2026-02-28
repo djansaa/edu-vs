@@ -5,7 +5,7 @@ namespace EduVS.Models
 {
     internal class QrCodeData
     {
-        // $"TESTID:{testCount}|GROUPID:{groupLetter}|TESTNAME:{testName}|TESTDATE:{testDate}|PAGE:{p+1}";
+        // $"{testId}|{groupId}|{testSubject}|{testName}|{testDate:yyyy-MM-dd}|{page}";
         public int TestId { get; set; }
         public char GroupId { get; set; } // 'A' / 'B'
         public string TestSubject { get; set; } = "";
@@ -23,6 +23,13 @@ namespace EduVS.Models
         {
             data = null;
             if (string.IsNullOrWhiteSpace(payload)) return false;
+
+            var compactData = TryParseCompact(payload);
+            if (compactData is not null)
+            {
+                data = compactData;
+                return true;
+            }
 
             var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             var parts = payload.Split('|');
@@ -88,6 +95,40 @@ namespace EduVS.Models
                 Page = page
             };
             return true;
+        }
+
+        private static QrCodeData? TryParseCompact(string payload)
+        {
+            var parts = payload.Split('|');
+            if (parts.Length < 6) return null;
+
+            if (!int.TryParse(parts[0].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var testId)) return null;
+            if (!int.TryParse(parts[5].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var page)) return null;
+
+            var groupStr = parts[1].Trim();
+            var group = string.IsNullOrEmpty(groupStr) ? '\0' : char.ToUpperInvariant(groupStr[0]);
+            if (group != 'A' && group != 'B') return null;
+
+            DateTime? date = null;
+            var dateStr = parts[4].Trim();
+            if (!string.IsNullOrWhiteSpace(dateStr))
+            {
+                if (DateTime.TryParseExact(dateStr, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)
+                    || DateTime.TryParse(dateStr, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out d))
+                {
+                    date = d.Date;
+                }
+            }
+
+            return new QrCodeData
+            {
+                TestId = testId,
+                GroupId = group,
+                TestSubject = parts[2].Trim(),
+                TestName = parts[3].Trim(),
+                TestDate = date,
+                Page = page
+            };
         }
     }
 }

@@ -39,12 +39,12 @@
                 <StackPanel>
                     <StackPanel Orientation="Vertical" Margin="0,0,0,8">
                         <TextBlock Text="Test subject:"/>
-                        <TextBox Text="{Binding TestSubject, UpdateSourceTrigger=PropertyChanged}" MinWidth="260"/>
+                        <TextBox Text="{Binding TestSubject, UpdateSourceTrigger=PropertyChanged}" MinWidth="260" MaxLength="52"/>
                     </StackPanel>
 
                     <StackPanel Orientation="Vertical" Margin="0,0,0,8">
                         <TextBlock Text="Test name:"/>
-                        <TextBox Text="{Binding TestName, UpdateSourceTrigger=PropertyChanged}" MinWidth="260"/>
+                        <TextBox Text="{Binding TestName, UpdateSourceTrigger=PropertyChanged}" MinWidth="260" MaxLength="52"/>
                     </StackPanel>
 
                     <StackPanel Orientation="Vertical">
