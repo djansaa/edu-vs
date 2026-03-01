@@ -5,12 +5,12 @@ namespace EduVS.Models
 {
     internal class QrCodeData
     {
-        // $"{testId}|{groupId}|{testSubject}|{testName}|{testDate:yyyy-MM-dd}|{page}";
+        // $"{testId}|{groupId}|{testSubject}|{testName}|{yyMdd}|{page}";
         public int TestId { get; set; }
         public char GroupId { get; set; } // 'A' / 'B'
         public string TestSubject { get; set; } = "";
         public string TestName { get; set; } = "";
-        public DateTime? TestDate { get; set; } // yyyy-MM-dd
+        public DateTime? TestDate { get; set; } // yyMdd (M = hex month)
         public int Page { get; set; } // 0-based
 
         public static QrCodeData Parse(string payload)
@@ -78,7 +78,7 @@ namespace EduVS.Models
             DateTime? date = null;
             if (dict.TryGetValue("TESTDATE", out var dateStr) && !string.IsNullOrWhiteSpace(dateStr))
             {
-                if (DateTime.TryParseExact(dateStr, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)
+                if (TryParseQrDate(dateStr, out var d)
                     || DateTime.TryParse(dateStr, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out d))
                 {
                     date = d.Date;
@@ -113,7 +113,7 @@ namespace EduVS.Models
             var dateStr = parts[4].Trim();
             if (!string.IsNullOrWhiteSpace(dateStr))
             {
-                if (DateTime.TryParseExact(dateStr, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)
+                if (TryParseQrDate(dateStr, out var d)
                     || DateTime.TryParse(dateStr, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out d))
                 {
                     date = d.Date;
@@ -129,6 +129,38 @@ namespace EduVS.Models
                 TestDate = date,
                 Page = page
             };
+        }
+
+        private static bool TryParseQrDate(string dateStr, out DateTime date)
+        {
+            if (TryParseHexMonthQrDate(dateStr, out date)) return true;
+
+            return DateTime.TryParseExact(
+                dateStr,
+                new[] { "yyMMdd", "yyyyMMdd", "yyyy-MM-dd" },
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out date);
+        }
+
+        private static bool TryParseHexMonthQrDate(string dateStr, out DateTime date)
+        {
+            date = default;
+            if (string.IsNullOrWhiteSpace(dateStr) || dateStr.Length != 5) return false;
+
+            if (!int.TryParse(dateStr[..2], NumberStyles.Integer, CultureInfo.InvariantCulture, out var year)) return false;
+            if (!int.TryParse(dateStr[2].ToString(), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var month)) return false;
+            if (!int.TryParse(dateStr[3..], NumberStyles.Integer, CultureInfo.InvariantCulture, out var day)) return false;
+
+            try
+            {
+                date = new DateTime(2000 + year, month, day);
+                return true;
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                return false;
+            }
         }
     }
 }

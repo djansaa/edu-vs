@@ -22,7 +22,7 @@ namespace EduVS.Helpers
 
         }
 
-        public void GenerateTestPrintTemplate(string outputPath, string testSubject, string testName, string testDate, string? templateAPath, int templateACount, string? templateBPath, int templateBCount)
+        public void GenerateTestPrintTemplate(string outputPath, string testSubject, string testName, DateTime testDate, string? templateAPath, int templateACount, string? templateBPath, int templateBCount)
         {
             // validate inputs
             if (string.IsNullOrEmpty(testSubject))
@@ -33,11 +33,6 @@ namespace EduVS.Helpers
             {
                 throw new ArgumentException("Test name is empty.", nameof(testName));
             }
-            if (string.IsNullOrEmpty(testDate))
-            {
-                throw new ArgumentException("Test date is empty.", nameof(testDate));
-            }
-
             if (string.IsNullOrEmpty(templateAPath) && string.IsNullOrEmpty(templateBPath))
             {
                 throw new ArgumentException("At least one template path must be provided.");
@@ -124,8 +119,8 @@ namespace EduVS.Helpers
                         // ##################### QR CODE #####################
 
                         // qr code data
-                        // $"{testCount}|{groupLetter}|{testSubject}|{testName}|{testDate:yyyy-MM-dd}|{p + 1}";
-                        var qrData = $"{testCount}|{groupLetter}|{testSubject}|{testName}|{testDate:yyyy-MM-dd}|{p + 1}";
+                        // $"{testCount}|{groupLetter}|{testSubject}|{testName}|{EncodeQrDate(testDate)}|{p + 1}";
+                        var qrData = $"{testCount}|{groupLetter}|{testSubject}|{testName}|{EncodeQrDate(testDate)}|{p + 1}";
 
                         int dpi = 300;
                         int pxSize = (int)Math.Round(qrSize * dpi / 72.0);
@@ -373,6 +368,11 @@ namespace EduVS.Helpers
         }
 
         private int NormalizeRotate(int deg) => (((deg % 360) + 360) % 360) switch { 0 => 0, 90 => 90, 180 => 180, 270 => 270, _ => 0 };
+
+        private static string EncodeQrDate(DateTime testDate)
+        {
+            return $"{testDate:yy}{testDate.Month:X}{testDate:dd}";
+        }
 
         // ================================================ AI =============================================
 
