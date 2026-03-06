@@ -97,7 +97,7 @@ namespace EduVS.ViewModels
             _combinedPdfPath = _pdf.MergePdfs(SelectedPdfPaths, temp);
 
             var qrTopRight = new System.Drawing.RectangleF(0.55f, 0f, 0.45f, 0.45f);
-            var nameBoxTL = new System.Drawing.RectangleF(0.10f, 0.0095f, 0.49f, 0.06f);
+            var nameBoxTL = new System.Drawing.RectangleF(0.175f, 0.0095f, 0.49f, 0.06f);
 
             var (testsFound, pagesMap) = _pdf.Scan(_combinedPdfPath, qrTopRight, nameBoxTL);
             Tests = new ObservableCollection<TestData>(testsFound);

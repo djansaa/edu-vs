@@ -183,6 +183,7 @@ namespace EduVS.Helpers
 
                 if (scanResult.QrData is null)
                 {
+                    // TODO: QR code not found -> show window and ask user to select 1) page (front or back), 2) test id, 3) test group (if split), 4) rotation
                     Debug.WriteLine($"Page: {pageIndex + 1} - QR NOT FOUND");
                 }
                 else
@@ -389,6 +390,9 @@ namespace EduVS.Helpers
             return outputPath;
         }
 
+        /// <summary>
+        /// Step 3 -> scan pdfs with tests and show them in app with test id
+        /// </summary>
         public (List<TestData> tests, Dictionary<int, List<int>> pagesByTestId)
             Scan(string combinedPdfPath, RectangleF qrTopRightRel, RectangleF nameBoxTopLeftRel)
         {
@@ -420,7 +424,7 @@ namespace EduVS.Helpers
                     qr = TryDecodeQr(reader, rot, qrTopRightRel);
                 }
 
-                // TODO: DO SOMETHING!!!
+                // TODO: show window and ask user to set test id
                 if (qr is null) continue;
 
                 if (!QrCodeData.TryParse(qr, out var q) || q is null) continue;
