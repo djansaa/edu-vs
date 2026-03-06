@@ -114,9 +114,9 @@ namespace EduVS.Helpers
                             */
                         }
 
-                        // add group letter and test id next to the qr code
+                        // add group letter, test id and page id next to the qr code
                         // on all pages
-                        gfx.DrawString($"{groupLetter}{testCount}", fontBold, XBrushes.Black, new XPoint(margin + 450, top + 37));
+                        gfx.DrawString($"{groupLetter}{testCount} [{p + 1}]", fontBold, XBrushes.Black, new XPoint(margin + 430, top + 37));
 
                         // ##################### QR CODE #####################
 
@@ -272,7 +272,7 @@ namespace EduVS.Helpers
             dst.Save(outputPath);
         }
 
-        private (string? text, int rotation) TryDecodePage(BarcodeReader reader, Bitmap full, RectangleF? qrTopRightRel = null, float relW = 0.23f, float relH = 0.10f)
+        private (string? text, int rotation) TryDecodePage(BarcodeReader reader, Bitmap full, RectangleF? qrTopRightRel = null, float relW = 0.25f, float relH = 0.10f)
         {
             string? TryDecode(Bitmap bitmap)
             {
