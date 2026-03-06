@@ -272,7 +272,7 @@ namespace EduVS.Helpers
             dst.Save(outputPath);
         }
 
-        private (string? text, int rotation) TryDecodePage(BarcodeReader reader, Bitmap full, float relW = 0.2f, float relH = 0.15f)
+        private (string? text, int rotation) TryDecodePage(BarcodeReader reader, Bitmap full, float relW = 0.23f, float relH = 0.10f)
         {
             // 1) ROI on original
             var text = TryDecodeRegion(reader, full, relW, relH);
@@ -331,7 +331,7 @@ namespace EduVS.Helpers
         {
             using var roi = CropTopRight(full, relW, relH);
 
-            /* 
+            /*
             // export ROI as PNG (always, or gate it with a condition)
             var fileName = $"roi_{DateTime.Now:yyyyMMdd_HHmmss_fff}.png";
             var path = Path.Combine(AppContext.BaseDirectory, fileName);
