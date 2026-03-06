@@ -102,9 +102,8 @@ namespace EduVS.Helpers
                             var dateText = $"datum: {testDate:yyyy-MM-dd}";
                             gfx.DrawString(dateText, fontBold, XBrushes.Black, new XPoint(margin + 345, top + 17));
 
-                            // add to pdf
-                            gfx.DrawString($"[{groupLetter}{testCount}] | {testSubject} | {testName}", fontBold, XBrushes.Black, new XPoint(margin, top + 43));
-
+                            // test subject + test name
+                            gfx.DrawString($"{testSubject} | {testName}", fontBold, XBrushes.Black, new XPoint(margin, top + 43));
 
                             /* OLD CODE
                             // test subject + group
@@ -115,6 +114,10 @@ namespace EduVS.Helpers
                             gfx.DrawString($"{testName}", fontBoldBigger, XBrushes.Black, new XPoint(centerX, top + 75), XStringFormats.Center);
                             */
                         }
+
+                        // add group letter and test id next to the qr code
+                        // on all pages
+                        gfx.DrawString($"{groupLetter}{testCount}", fontBold, XBrushes.Black, new XPoint(margin + 450, top + 37));
 
                         // ##################### QR CODE #####################
 
