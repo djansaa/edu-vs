@@ -7,7 +7,6 @@ using SkiaSharp;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
-using System.Text;
 using System.Windows.Media.Imaging;
 using ZXing;
 using ZXing.Common;
@@ -188,6 +187,7 @@ namespace EduVS.Helpers
                 {
                     // TODO: QR code not found -> show window and ask user to select 1) page (front or back), 2) test id, 3) test group (if split), 4) rotation
                     Debug.WriteLine($"Page: {pageIndex + 1} - QR NOT FOUND");
+                    throw new Exception($"Page: {pageIndex + 1} - QR NOT FOUND");
                 }
                 else
                 {
@@ -272,15 +272,22 @@ namespace EduVS.Helpers
             dst.Save(outputPath);
         }
 
-        private (string? text, int rotation) TryDecodePage(BarcodeReader reader, Bitmap full, float relW = 0.23f, float relH = 0.10f)
+        private (string? text, int rotation) TryDecodePage(BarcodeReader reader, Bitmap full, RectangleF? qrTopRightRel = null, float relW = 0.23f, float relH = 0.10f)
         {
+            string? TryDecode(Bitmap bitmap)
+            {
+                return qrTopRightRel is RectangleF rel
+                    ? TryDecodeRegion(reader, bitmap, rel)
+                    : TryDecodeRegion(reader, bitmap, relW, relH);
+            }
+
             // 1) ROI on original
-            var text = TryDecodeRegion(reader, full, relW, relH);
+            var text = TryDecode(full);
             if (text != null) return (text, 0);
 
             // 2) ROI on 180° rotated
             var rotated = RotateBitmap180(full);
-            text = TryDecodeRegion(reader, rotated, relW, relH);
+            text = TryDecode(rotated);
             if (text != null) return (text, 180);
 
             // 3) Full page on original
@@ -294,7 +301,7 @@ namespace EduVS.Helpers
             return (null, 0);
         }
 
-        private (int Rotation, QrCodeData? QrData) ScanPageQrData(string inputPath, int pageIndex, BarcodeReader reader)
+        private (int Rotation, QrCodeData? QrData) ScanPageQrData(string inputPath, int pageIndex, BarcodeReader reader, RectangleF? qrTopRightRel = null)
         {
             string? qrText;
             int rotation;
@@ -302,7 +309,7 @@ namespace EduVS.Helpers
             using (var sk = PdfPageToSKBitmap(inputPath, pageIndex))
             using (var full = SKBitmapToBitmap(sk))
             {
-                (qrText, rotation) = TryDecodePage(reader, full);
+                (qrText, rotation) = TryDecodePage(reader, full, qrTopRightRel);
             }
 
             if (qrText is null || !QrCodeData.TryParse(qrText, out var qrData) || qrData is null)
@@ -342,6 +349,13 @@ namespace EduVS.Helpers
             return result?.Text;
         }
 
+        private string? TryDecodeRegion(BarcodeReader reader, Bitmap full, RectangleF rel)
+        {
+            using var roi = CropRel(full, rel);
+            var result = reader.Decode(roi);
+            return result?.Text;
+        }
+
         private Bitmap SKBitmapToBitmap(SKBitmap skb)
         {
             using var img = SKImage.FromPixels(skb.PeekPixels());
@@ -356,6 +370,15 @@ namespace EduVS.Helpers
             int h = Math.Max(1, (int)(bmp.Height * relH));
             var rect = new Rectangle(bmp.Width - w, 0, w, h);
             return bmp.Clone(rect, bmp.PixelFormat);
+        }
+
+        private Bitmap CropRel(Bitmap bmp, RectangleF rel)
+        {
+            int x = Math.Clamp((int)(bmp.Width * rel.X), 0, Math.Max(0, bmp.Width - 1));
+            int y = Math.Clamp((int)(bmp.Height * rel.Y), 0, Math.Max(0, bmp.Height - 1));
+            int w = Math.Clamp((int)(bmp.Width * rel.Width), 1, bmp.Width - x);
+            int h = Math.Clamp((int)(bmp.Height * rel.Height), 1, bmp.Height - y);
+            return bmp.Clone(new Rectangle(x, y, w, h), bmp.PixelFormat);
         }
 
         private Bitmap RotateBitmap180(Bitmap src)
@@ -418,19 +441,15 @@ namespace EduVS.Helpers
 
             for (int i = 0; i < src.PageCount; i++)
             {
-                using var skb = PdfPageToSKBitmap(combinedPdfPath, i);
-
-                string? qr = TryDecodeQr(reader, skb, qrTopRightRel);
-                if (qr is null)
-                {
-                    using var rot = RotateSK180(skb);
-                    qr = TryDecodeQr(reader, rot, qrTopRightRel);
-                }
+                var scanResult = ScanPageQrData(combinedPdfPath, i, reader, qrTopRightRel);
 
                 // TODO: show window and ask user to set test id
-                if (qr is null) continue;
+                if (scanResult.QrData is null)
+                {
+                    throw new Exception($"Page: {i + 1} - QR NOT FOUND");
+                }
 
-                if (!QrCodeData.TryParse(qr, out var q) || q is null) continue;
+                var q = scanResult.QrData;
 
                 if (!pagesByTest.TryGetValue(q.TestId, out var list))
                     pagesByTest[q.TestId] = list = new List<int>();
@@ -438,6 +457,7 @@ namespace EduVS.Helpers
 
                 if (q.Page == 1 && !haveNameBox.Contains(q.TestId))
                 {
+                    using var skb = PdfPageToSKBitmap(combinedPdfPath, i);
                     var nb = CropRelToBitmapSource(skb, nameBoxTopLeftRel);
                     tests.Add(new TestData { TestId = q.TestId, NameBoxBitmap = nb });
                     haveNameBox.Add(q.TestId);
@@ -488,16 +508,6 @@ namespace EduVS.Helpers
             return Conversion.ToImage(fs, pageIndex);
         }
 
-        static string? TryDecodeQr(ZXing.Windows.Compatibility.BarcodeReader reader, SKBitmap src, RectangleF rel)
-        {
-            using var crop = CropRelShared(src, rel);
-            using var img = SKImage.FromPixels(crop.PeekPixels());
-            using var data = img.Encode(SKEncodedImageFormat.Png, 100);
-            using var ms = new MemoryStream(data.ToArray());
-            using var bmp = (System.Drawing.Bitmap)System.Drawing.Image.FromStream(ms);
-            return reader.Decode(bmp)?.Text;
-        }
-
         static SKBitmap CropRelShared(SKBitmap src, RectangleF rel)
         {
             int x = Math.Clamp((int)(src.Width * rel.X), 0, Math.Max(0, src.Width - 1));
@@ -509,16 +519,6 @@ namespace EduVS.Helpers
             if (!src.ExtractSubset(subset, new SKRectI(x, y, x + w, y + h)))
                 throw new InvalidOperationException("ExtractSubset failed.");
             return subset;
-        }
-
-        static SKBitmap RotateSK180(SKBitmap src)
-        {
-            var dst = new SKBitmap(src.Width, src.Height, src.ColorType, src.AlphaType);
-            using var canvas = new SKCanvas(dst);
-            canvas.Translate(src.Width, src.Height);
-            canvas.RotateDegrees(180);
-            canvas.DrawBitmap(src, 0, 0);
-            return dst;
         }
 
         static BitmapSource CropRelToBitmapSource(SKBitmap src, RectangleF rel)
