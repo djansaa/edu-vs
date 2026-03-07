@@ -49,6 +49,9 @@ namespace EduVS
                     services.AddTransient<GenerateTestResultsViewModel>();
                     services.AddTransient<CreateNewStudentsViewModel>();
                     services.AddTransient<ManualQrResolutionViewModel>();
+                    services.AddTransient<GenerateTestProgressViewModel>();
+                    services.AddTransient<PrepareTestCheckProgressViewModel>();
+                    services.AddTransient<GenerateTestResultsStartProgressViewModel>();
 
                     services.AddTransient<PdfManager>();
                     services.AddTransient<IManualQrResolutionDialogService, ManualQrResolutionDialogService>();
@@ -60,6 +63,9 @@ namespace EduVS
                     services.AddTransient<GenerateTestResultsWindowView>();
                     services.AddTransient<CreateNewStudentsWindowView>();
                     services.AddTransient<ManualQrResolutionWindowView>();
+                    services.AddTransient<GenerateTestProgressWindowView>();
+                    services.AddTransient<PrepareTestCheckProgressWindowView>();
+                    services.AddTransient<GenerateTestResultsStartProgressWindowView>();
 
                 })
                 .Build();

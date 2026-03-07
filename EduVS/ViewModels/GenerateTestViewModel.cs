@@ -1,17 +1,20 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EduVS.Helpers;
+using EduVS.Models;
+using EduVS.Views;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System.Diagnostics;
 using System.Windows;
-
 
 namespace EduVS.ViewModels
 {
     public partial class GenerateTestViewModel : BaseViewModel
     {
         private const int MaxSubjectAndNameChars = 52;
+
         private readonly PdfManager _pdfManager;
+        private readonly IServiceProvider _serviceProvider;
 
         [ObservableProperty] private string? testSubject;
         [ObservableProperty] private string? testName;
@@ -25,16 +28,17 @@ namespace EduVS.ViewModels
 
         public RelayCommand BrowseTemplateACommand { get; }
         public RelayCommand BrowseTemplateBCommand { get; }
-        public RelayCommand ExportCommand { get; }
+        public IAsyncRelayCommand ExportCommand { get; }
 
-        public GenerateTestViewModel(ILogger<GenerateTestViewModel> logger, PdfManager pdfManager) : base(logger)
+        public GenerateTestViewModel(ILogger<GenerateTestViewModel> logger, PdfManager pdfManager, IServiceProvider serviceProvider) : base(logger)
         {
             _pdfManager = pdfManager;
+            _serviceProvider = serviceProvider;
             TestDate = DateTime.Today;
 
             BrowseTemplateACommand = new RelayCommand(BrowseTemplateA);
             BrowseTemplateBCommand = new RelayCommand(BrowseTemplateB);
-            ExportCommand = new RelayCommand(ExportTests);
+            ExportCommand = new AsyncRelayCommand(ExportTestsAsync);
         }
 
         partial void OnTestSubjectChanged(string? value)
@@ -63,75 +67,135 @@ namespace EduVS.ViewModels
             TemplateBPath = path;
         }
 
-        private void ExportTests()
+        private async Task ExportTestsAsync()
         {
-            // check page count
+            var testSubject = TestSubject;
+            var testName = TestName;
+
             if (TemplateACount + TemplateBCount == 0)
             {
                 MessageBox.Show("Total number of test pages is 0.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
-            // testSubject
-            if (string.IsNullOrEmpty(TestSubject))
+
+            if (string.IsNullOrEmpty(testSubject))
             {
                 MessageBox.Show("Test subject is empty.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
-            // testName
-            if (string.IsNullOrEmpty(TestName))
+
+            if (string.IsNullOrEmpty(testName))
             {
                 MessageBox.Show("Test name is empty.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
-            if ((TestSubject?.Length ?? 0) + (TestName?.Length ?? 0) > MaxSubjectAndNameChars)
+
+            if (testSubject.Length + testName.Length > MaxSubjectAndNameChars)
             {
-                var currentLength = (TestSubject?.Length ?? 0) + (TestName?.Length ?? 0);
-                var overflow = currentLength - MaxSubjectAndNameChars;
+                var overflow = testSubject.Length + testName.Length - MaxSubjectAndNameChars;
                 MessageBox.Show($"Test subject and test name can have at most {MaxSubjectAndNameChars} characters combined for the QR code.\nReduce subject/name by {overflow} characters.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
-            // templateAPath
+
             if (string.IsNullOrEmpty(TemplateAPath))
             {
                 var result = MessageBox.Show("Template A path is empty. Continue?", "Validation Warning", MessageBoxButton.YesNo, MessageBoxImage.Warning);
                 if (result == MessageBoxResult.No) return;
             }
-            // templateACount
+
             if (!string.IsNullOrEmpty(TemplateAPath) && TemplateACount == 0)
             {
                 var result = MessageBox.Show("Template A count is 0. Continue?", "Validation Warning", MessageBoxButton.YesNo, MessageBoxImage.Warning);
                 if (result == MessageBoxResult.No) return;
             }
-            // templateBPath
+
             if (string.IsNullOrEmpty(TemplateBPath))
             {
                 var result = MessageBox.Show("Template B path is empty. Continue?", "Validation Warning", MessageBoxButton.YesNo, MessageBoxImage.Warning);
                 if (result == MessageBoxResult.No) return;
             }
-            // templateBCount
+
             if (!string.IsNullOrEmpty(TemplateBPath) && TemplateBCount == 0)
             {
                 var result = MessageBox.Show("Template B count is 0. Continue?", "Validation Warning", MessageBoxButton.YesNo, MessageBoxImage.Warning);
                 if (result == MessageBoxResult.No) return;
             }
 
-            // select export path for As and Bs tests
-            var outputPath = PdfPicker.PickPdfSavePath($"{TestSubject}_{TestName}_{TestDate:yyyy-MM-dd}_print.pdf");
-            if (outputPath == null) return;
+            var outputPath = PdfPicker.PickPdfSavePath($"{testSubject}_{testName}_{TestDate:yyyy-MM-dd}_print.pdf");
+            if (outputPath is null) return;
 
-            // summary name of templates, number of A and B tests, date
             _logger.LogInformation($"Exporting test with the following details:\n\n" +
-                $"Test Subject: {TestSubject}\n" +
-                $"Test Name: {TestName}\n" +
+                $"Test Subject: {testSubject}\n" +
+                $"Test Name: {testName}\n" +
                 $"Test Date: {TestDate:yyyy-MM-dd}\n" +
                 $"Template A: {(string.IsNullOrEmpty(TemplateAPath) ? "None" : TemplateAPath)} (Count: {TemplateACount})\n" +
                 $"Template B: {(string.IsNullOrEmpty(TemplateBPath) ? "None" : TemplateBPath)} (Count: {TemplateBCount})\n\n" +
                 $"Output Path: {outputPath}");
 
-            // create PDF
-            _pdfManager.GenerateTestPrintTemplate(outputPath, TestSubject, TestName, TestDate, TemplateAPath, TemplateACount, TemplateBPath, TemplateBCount);
+            var totalTestsToGenerate = 0;
+            if (!string.IsNullOrWhiteSpace(TemplateAPath) && TemplateACount > 0) totalTestsToGenerate += TemplateACount;
+            if (!string.IsNullOrWhiteSpace(TemplateBPath) && TemplateBCount > 0) totalTestsToGenerate += TemplateBCount;
 
-            MessageBox.Show("Test PDF generated successfully.", "Export Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+            var progressWindow = _serviceProvider.GetRequiredService<GenerateTestProgressWindowView>();
+            var progressVm = progressWindow.ViewModel;
+            progressVm.Initialize(totalTestsToGenerate);
+            var ownerWindow = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive && w != progressWindow);
+            progressWindow.Owner = ownerWindow;
+            progressWindow.Show();
+
+            try
+            {
+                var progress = new Progress<GenerateTestProgressInfo>(progressVm.Report);
+                await _pdfManager.GenerateTestPrintTemplateAsync(
+                    outputPath,
+                    testSubject,
+                    testName,
+                    TestDate,
+                    TemplateAPath,
+                    TemplateACount,
+                    TemplateBPath,
+                    TemplateBCount,
+                    progress,
+                    progressVm.CancellationToken);
+
+                progressVm.Finish("Generation completed.");
+                progressVm.CanClose = true;
+                progressWindow.Close();
+                ownerWindow?.Activate();
+                ShowOwnedMessageBox(ownerWindow, "Test PDF generated successfully.", "Export Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (OperationCanceledException)
+            {
+                progressVm.Finish("Generation canceled.");
+                progressVm.CanClose = true;
+                progressWindow.Close();
+                ownerWindow?.Activate();
+                ShowOwnedMessageBox(ownerWindow, "Test PDF generation was canceled.", "Export Canceled", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                progressVm.Finish("Generation failed.");
+                _logger.LogError(ex, "Failed to generate test PDF.");
+                progressVm.CanClose = true;
+                progressWindow.Close();
+                ownerWindow?.Activate();
+                ShowOwnedMessageBox(ownerWindow, $"Failed to generate test PDF.\n\n{ex.Message}", "Export Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                if (progressWindow.IsVisible)
+                {
+                    progressVm.CanClose = true;
+                    progressWindow.Close();
+                }
+            }
+        }
+
+        private static MessageBoxResult ShowOwnedMessageBox(Window? owner, string messageBoxText, string caption, MessageBoxButton button, MessageBoxImage icon)
+        {
+            return owner is null
+                ? MessageBox.Show(messageBoxText, caption, button, icon)
+                : MessageBox.Show(owner, messageBoxText, caption, button, icon);
         }
 
         private void EnforceQrPayloadBudget(bool isSubjectChanged)

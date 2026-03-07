@@ -17,6 +17,11 @@ namespace EduVS.Helpers
 
         public ManualQrResolutionResult? Show(ManualQrResolutionRequest request)
         {
+            if (!Application.Current.Dispatcher.CheckAccess())
+            {
+                return Application.Current.Dispatcher.Invoke(() => Show(request));
+            }
+
             var window = _serviceProvider.GetRequiredService<ManualQrResolutionWindowView>();
             var viewModel = window.ViewModel;
 

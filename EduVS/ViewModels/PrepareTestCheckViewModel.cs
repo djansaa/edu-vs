@@ -1,6 +1,9 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EduVS.Helpers;
+using EduVS.Models;
+using EduVS.Views;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.IO;
 using System.Windows;
@@ -10,6 +13,7 @@ namespace EduVS.ViewModels
     public partial class PrepareTestCheckViewModel : BaseViewModel
     {
         private readonly PdfManager _pdfManager;
+        private readonly IServiceProvider _serviceProvider;
 
         [ObservableProperty] private string? pdfPath;
         [ObservableProperty] private string? detectedTestSubject;
@@ -18,36 +22,33 @@ namespace EduVS.ViewModels
         [ObservableProperty] private bool isPdfInfoLoaded;
         [ObservableProperty] private bool isReadingPdfInfo;
 
-        // Output mode
         [ObservableProperty] private bool isSplitByGroup = true;
         [ObservableProperty] private bool isMergedSingle = false;
 
-        // Sorting mode
         [ObservableProperty] private bool sortByPageNumber = true;
         [ObservableProperty] private bool sortByTestNumber = false;
 
-        // PDFs output paths
         [ObservableProperty] private string? pdfPathA;
         [ObservableProperty] private string? pdfPathB;
 
-        // ==== Commands ====
         public RelayCommand BrowsePdfCommand { get; }
         public RelayCommand ReadPdfInfoCommand { get; }
-        public RelayCommand ExportCommand { get; }
+        public IAsyncRelayCommand ExportCommand { get; }
         public RelayCommand BrowsePdfANewCommmand { get; }
         public RelayCommand BrowsePdfBNewCommmand { get; }
 
         public bool CanReadPdfInfo => !string.IsNullOrWhiteSpace(PdfPath) && !IsReadingPdfInfo;
         public bool CanConfigureOutput => IsPdfInfoLoaded && !IsReadingPdfInfo;
 
-        public PrepareTestCheckViewModel(ILogger<PrepareTestCheckViewModel> logger, PdfManager pdfManager) : base(logger)
+        public PrepareTestCheckViewModel(ILogger<PrepareTestCheckViewModel> logger, PdfManager pdfManager, IServiceProvider serviceProvider) : base(logger)
         {
             _pdfManager = pdfManager;
+            _serviceProvider = serviceProvider;
             BrowsePdfCommand = new RelayCommand(BrowsePdf);
             ReadPdfInfoCommand = new RelayCommand(ReadPdfInfo);
             BrowsePdfANewCommmand = new RelayCommand(BrowsePdfANew);
             BrowsePdfBNewCommmand = new RelayCommand(BrowsePdfBNew);
-            ExportCommand = new RelayCommand(ExportTestCheck);
+            ExportCommand = new AsyncRelayCommand(ExportTestCheckAsync);
         }
 
         partial void OnPdfPathChanged(string? value)
@@ -129,23 +130,26 @@ namespace EduVS.ViewModels
             PdfPathB = path;
         }
 
-        private void ExportTestCheck()
+        private async Task ExportTestCheckAsync()
         {
             if (string.IsNullOrEmpty(PdfPath))
             {
                 MessageBox.Show("You must choose input PDF file.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
+
             if (!IsPdfInfoLoaded)
             {
                 MessageBox.Show("Read the source PDF information before exporting.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
+
             if (string.IsNullOrEmpty(PdfPathA))
             {
                 MessageBox.Show("You must choose output PDF file for group A.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
+
             if (IsSplitByGroup && string.IsNullOrEmpty(PdfPathB))
             {
                 MessageBox.Show("You must choose output PDF file for group B.", "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -161,17 +165,58 @@ namespace EduVS.ViewModels
                 $"Output path B: {PdfPathB}\n" +
                 $"Sorting: {(SortByPageNumber ? "By page number" : "By test number")}");
 
+            var progressWindow = _serviceProvider.GetRequiredService<PrepareTestCheckProgressWindowView>();
+            var progressVm = progressWindow.ViewModel;
+            progressVm.Initialize(SourcePdfPageCount);
+            var ownerWindow = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive && w != progressWindow);
+            progressWindow.Owner = ownerWindow;
+            progressWindow.Show();
+
             try
             {
-                _pdfManager.GenerateTestCheck(PdfPath, IsSplitByGroup, IsMergedSingle, SortByPageNumber, SortByTestNumber, PdfPathA, PdfPathB ?? string.Empty);
+                var progress = new Progress<PrepareTestCheckProgressInfo>(progressVm.Report);
+                await _pdfManager.GenerateTestCheckAsync(
+                    PdfPath,
+                    IsSplitByGroup,
+                    IsMergedSingle,
+                    SortByPageNumber,
+                    SortByTestNumber,
+                    PdfPathA,
+                    PdfPathB ?? string.Empty,
+                    progress,
+                    progressVm.CancellationToken);
+
+                progressVm.Finish("Export completed.");
+                progressVm.CanClose = true;
+                progressWindow.Close();
+                ownerWindow?.Activate();
+                ShowOwnedMessageBox(ownerWindow, "Test check PDF generated successfully.", "Export Complete", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (OperationCanceledException)
             {
-                MessageBox.Show("Export was canceled during manual QR resolution.", "Export Canceled", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
+                progressVm.Finish("Export canceled.");
+                progressVm.CanClose = true;
+                progressWindow.Close();
+                ownerWindow?.Activate();
+                ShowOwnedMessageBox(ownerWindow, "Export was canceled during test check preparation.", "Export Canceled", MessageBoxButton.OK, MessageBoxImage.Information);
             }
-
-            MessageBox.Show("Test check PDF generated successfully.", "Export Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+            catch (Exception ex)
+            {
+                progressVm.Finish("Export failed.");
+                progressVm.CanClose = true;
+                progressWindow.Close();
+                ownerWindow?.Activate();
+                _logger.LogError(ex, "Failed to export test check.");
+                ShowOwnedMessageBox(ownerWindow, $"Failed to export test check.\n\n{ex.Message}", "Export Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                if (progressWindow.IsVisible)
+                {
+                    progressVm.CanClose = true;
+                    progressWindow.Close();
+                }
+            }
         }
 
         private void ResetLoadedPdfInfo()
@@ -204,6 +249,13 @@ namespace EduVS.ViewModels
             }
 
             return sanitized.Trim();
+        }
+
+        private static MessageBoxResult ShowOwnedMessageBox(Window? owner, string messageBoxText, string caption, MessageBoxButton button, MessageBoxImage icon)
+        {
+            return owner is null
+                ? MessageBox.Show(messageBoxText, caption, button, icon)
+                : MessageBox.Show(owner, messageBoxText, caption, button, icon);
         }
     }
 }

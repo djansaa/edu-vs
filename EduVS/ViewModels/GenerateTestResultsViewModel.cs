@@ -74,7 +74,7 @@ namespace EduVS.ViewModels
         }
 
         [RelayCommand]
-        private void Start()
+        private async Task Start()
         {
             if (SelectedPdfPaths is null || !SelectedPdfPaths.Any())
             {
@@ -95,16 +95,32 @@ namespace EduVS.ViewModels
                 return;
             }
 
+            var progressWindow = _serviceProvider.GetRequiredService<GenerateTestResultsStartProgressWindowView>();
+            var progressVm = progressWindow.ViewModel;
+            progressVm.Initialize();
+            var ownerWindow = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive && w != progressWindow);
+            progressWindow.Owner = ownerWindow;
+            progressWindow.Show();
+
             try
             {
                 var temp = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"combined_{Guid.NewGuid():N}.pdf");
-                var combinedPdfPath = _pdf.MergePdfs(SelectedPdfPaths, temp);
-                var info = _pdf.ReadTestCheckPdfInfo(combinedPdfPath);
+                var combinedPdfPath = await _pdf.MergePdfsAsync(SelectedPdfPaths, temp, progressVm.CancellationToken);
+
+                progressVm.Report(new GenerateTestResultsStartProgressInfo
+                {
+                    ProcessedPages = 0,
+                    TotalPages = 0,
+                    StatusText = "Reading PDF info..."
+                });
+
+                var info = await Task.Run(() => _pdf.ReadTestCheckPdfInfo(combinedPdfPath), progressVm.CancellationToken);
 
                 var qrTopRight = new System.Drawing.RectangleF(0.55f, 0f, 0.45f, 0.45f);
                 var nameBoxTL = new System.Drawing.RectangleF(0.175f, 0.0095f, 0.49f, 0.06f);
 
-                var (testsFound, pagesMap) = _pdf.Scan(combinedPdfPath, qrTopRight, nameBoxTL);
+                var progress = new Progress<GenerateTestResultsStartProgressInfo>(progressVm.Report);
+                var (testsFound, pagesMap) = await _pdf.ScanAsync(combinedPdfPath, qrTopRight, nameBoxTL, progress, progressVm.CancellationToken);
 
                 Students = new ObservableCollection<StudentData>(parsedStudents);
                 Tests = new ObservableCollection<TestData>(testsFound);
@@ -114,11 +130,28 @@ namespace EduVS.ViewModels
                 _pagesByTestId = new Dictionary<int, List<int>>(pagesMap);
                 _combinedPdfPath = combinedPdfPath;
                 IsStarted = true;
+
+                progressVm.Finish("Loading completed.");
+                progressVm.CanClose = true;
+                progressWindow.Close();
+                ownerWindow?.Activate();
             }
             catch (OperationCanceledException)
             {
                 Abort();
-                MessageBox.Show("Loading was canceled during manual QR resolution.", "Loading Canceled", MessageBoxButton.OK, MessageBoxImage.Information);
+                progressVm.Finish("Loading canceled.");
+                progressVm.CanClose = true;
+                progressWindow.Close();
+                ownerWindow?.Activate();
+                ShowOwnedMessageBox(ownerWindow, "Loading was canceled during test result preparation.", "Loading Canceled", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            finally
+            {
+                if (progressWindow.IsVisible)
+                {
+                    progressVm.CanClose = true;
+                    progressWindow.Close();
+                }
             }
         }
 
@@ -401,6 +434,8 @@ namespace EduVS.ViewModels
             if (outputFolder is null) return;
 
             _pdf.ExportPerStudent(_combinedPdfPath, _pagesByTestId, toExport, outputFolder, DetectedTestName);
+
+            MessageBox.Show($"Tests were exported to {outputFolder} folder successfully.", "Export", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private List<(string FileName, int PageCount)> GetOutlierExportPageCounts(IEnumerable<(string name, int testId)> exports)
@@ -451,6 +486,13 @@ namespace EduVS.ViewModels
             }
 
             return sanitized.Trim();
+        }
+
+        private static MessageBoxResult ShowOwnedMessageBox(Window? owner, string messageBoxText, string caption, MessageBoxButton button, MessageBoxImage icon)
+        {
+            return owner is null
+                ? MessageBox.Show(messageBoxText, caption, button, icon)
+                : MessageBox.Show(owner, messageBoxText, caption, button, icon);
         }
     }
 }

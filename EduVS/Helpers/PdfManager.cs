@@ -28,6 +28,18 @@ namespace EduVS.Helpers
 
         public void GenerateTestPrintTemplate(string outputPath, string testSubject, string testName, DateTime testDate, string? templateAPath, int templateACount, string? templateBPath, int templateBCount)
         {
+            GenerateTestPrintTemplateCore(outputPath, testSubject, testName, testDate, templateAPath, templateACount, templateBPath, templateBCount, progress: null, cancellationToken: CancellationToken.None);
+        }
+
+        public Task GenerateTestPrintTemplateAsync(string outputPath, string testSubject, string testName, DateTime testDate, string? templateAPath, int templateACount, string? templateBPath, int templateBCount, IProgress<GenerateTestProgressInfo>? progress, CancellationToken cancellationToken)
+        {
+            return Task.Run(() =>
+                GenerateTestPrintTemplateCore(outputPath, testSubject, testName, testDate, templateAPath, templateACount, templateBPath, templateBCount, progress, cancellationToken),
+                cancellationToken);
+        }
+
+        private void GenerateTestPrintTemplateCore(string outputPath, string testSubject, string testName, DateTime testDate, string? templateAPath, int templateACount, string? templateBPath, int templateBCount, IProgress<GenerateTestProgressInfo>? progress, CancellationToken cancellationToken)
+        {
             // validate inputs
             if (string.IsNullOrEmpty(testSubject))
             {
@@ -67,6 +79,10 @@ namespace EduVS.Helpers
 
             // test count for unique test ids
             int testCount = 0;
+            var totalTests = 0;
+
+            if (!string.IsNullOrWhiteSpace(templateAPath) && templateACount > 0) totalTests += templateACount;
+            if (!string.IsNullOrWhiteSpace(templateBPath) && templateBCount > 0) totalTests += templateBCount;
 
             // local function to append header
             void AppendHeader(string templatePath, int count, string testSubject, string groupLetter)
@@ -75,10 +91,12 @@ namespace EduVS.Helpers
 
                 for (int i = 0; i < count; i++)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     testCount++;
 
                     for (int p = 0; p < src.PageCount; p++)
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         // add page copy from template
                         PdfPage page = dst.AddPage(src.Pages[p]);
 
@@ -142,6 +160,12 @@ namespace EduVS.Helpers
                         // draw qr code
                         gfx.DrawImage(img, qrRect);
                     }
+
+                    progress?.Report(new GenerateTestProgressInfo
+                    {
+                        CompletedTests = testCount,
+                        TotalTests = totalTests
+                    });
                 }
             }
 
@@ -150,10 +174,23 @@ namespace EduVS.Helpers
 
             if (!string.IsNullOrWhiteSpace(templateBPath) && templateBCount > 0) AppendHeader(templateBPath, templateBCount, testSubject, "B");
 
+            cancellationToken.ThrowIfCancellationRequested();
             dst.Save(outputPath);
         }
 
         public void GenerateTestCheck(string inputPath, bool isSplitByGroup, bool isMergedSingle, bool sortByPageNumber, bool sortByTestNumber, string outputPathA, string outputPathB)
+        {
+            GenerateTestCheckCore(inputPath, isSplitByGroup, isMergedSingle, sortByPageNumber, sortByTestNumber, outputPathA, outputPathB, progress: null, cancellationToken: CancellationToken.None);
+        }
+
+        public Task GenerateTestCheckAsync(string inputPath, bool isSplitByGroup, bool isMergedSingle, bool sortByPageNumber, bool sortByTestNumber, string outputPathA, string outputPathB, IProgress<PrepareTestCheckProgressInfo>? progress, CancellationToken cancellationToken)
+        {
+            return Task.Run(() =>
+                GenerateTestCheckCore(inputPath, isSplitByGroup, isMergedSingle, sortByPageNumber, sortByTestNumber, outputPathA, outputPathB, progress, cancellationToken),
+                cancellationToken);
+        }
+
+        private void GenerateTestCheckCore(string inputPath, bool isSplitByGroup, bool isMergedSingle, bool sortByPageNumber, bool sortByTestNumber, string outputPathA, string outputPathB, IProgress<PrepareTestCheckProgressInfo>? progress, CancellationToken cancellationToken)
         {
             // validate inputs
             if (string.IsNullOrEmpty(inputPath) || !File.Exists(inputPath))
@@ -182,12 +219,14 @@ namespace EduVS.Helpers
             // source pdf
             using var src = PdfReader.Open(inputPath, PdfDocumentOpenMode.Import);
             var reader = CreateQrReader();
+            var totalPages = src.PageCount;
 
             QrCodeData? metadataTemplate = null;
 
             // for each page -> try decode qr
             for (int pageIndex = 0; pageIndex < src.PageCount; pageIndex++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var scanResult = ScanPageQrData(inputPath, pageIndex, reader);
 
                 if (scanResult.QrData is null)
@@ -206,6 +245,12 @@ namespace EduVS.Helpers
                     Debug.WriteLine($"Page: {pageIndex + 1} - QR: TestId={scanResult.QrData.TestId}, GroupId={scanResult.QrData.GroupId}, TestName={scanResult.QrData.TestName}, TestDate={scanResult.QrData.TestDate:yyyy-MM-dd}, Page={scanResult.QrData.Page} | Rotation={scanResult.Rotation}");
                     outputPagesData.Add((pageIndex, scanResult.Rotation, scanResult.QrData));
                 }
+
+                progress?.Report(new PrepareTestCheckProgressInfo
+                {
+                    ProcessedPages = pageIndex + 1,
+                    TotalPages = totalPages
+                });
             }
 
             Debug.WriteLine($"Total input pages: {src.PageCount}");
@@ -232,14 +277,14 @@ namespace EduVS.Helpers
                 var pagesB = outputPagesData.Where(t => t.qr.GroupId == 'B').ToList();
 
                 // copy pages to output pdfs
-                CopyTestCheckPages(src, outputPathA, pagesA);
-                CopyTestCheckPages(src, outputPathB, pagesB);
+                CopyTestCheckPages(src, outputPathA, pagesA, cancellationToken);
+                CopyTestCheckPages(src, outputPathB, pagesB, cancellationToken);
             }
             // merged
             else if (isMergedSingle)
             {
                 var pagesMarged = outputPagesData.ToList();
-                CopyTestCheckPages(src, outputPathA, pagesMarged);
+                CopyTestCheckPages(src, outputPathA, pagesMarged, cancellationToken);
             }
         }
 
@@ -265,7 +310,7 @@ namespace EduVS.Helpers
             return (src.PageCount, null);
         }
 
-        private void CopyTestCheckPages(PdfDocument src, string outputPath, IEnumerable<(int pageId, int rotation, QrCodeData qr)> tcp)
+        private void CopyTestCheckPages(PdfDocument src, string outputPath, IEnumerable<(int pageId, int rotation, QrCodeData qr)> tcp, CancellationToken cancellationToken)
         {
             if (string.IsNullOrEmpty(outputPath)) throw new ArgumentException("Output path is null or empty.", nameof(outputPath));
             if (tcp == null) return;
@@ -275,12 +320,14 @@ namespace EduVS.Helpers
             // for each page, apply rotation and add to destination
             foreach (var (pageId, rotation, qr) in tcp)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var newPage = src.Pages[pageId];
                 if (rotation != 0) newPage.Rotate = NormalizeRotate(newPage.Rotate + rotation);
                 dst.AddPage(newPage);
             }
 
             // export pdf
+            cancellationToken.ThrowIfCancellationRequested();
             dst.Save(outputPath);
         }
 
@@ -479,13 +526,28 @@ namespace EduVS.Helpers
 
         public string MergePdfs(IEnumerable<string> inputs, string outputPath)
         {
+            return MergePdfsCore(inputs, outputPath, CancellationToken.None);
+        }
+
+        public Task<string> MergePdfsAsync(IEnumerable<string> inputs, string outputPath, CancellationToken cancellationToken)
+        {
+            return Task.Run(() => MergePdfsCore(inputs, outputPath, cancellationToken), cancellationToken);
+        }
+
+        private string MergePdfsCore(IEnumerable<string> inputs, string outputPath, CancellationToken cancellationToken)
+        {
             using var dst = new PdfDocument();
             foreach (var p in inputs.Where(File.Exists))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 using var src = PdfReader.Open(p, PdfDocumentOpenMode.Import);
                 for (int i = 0; i < src.PageCount; i++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
                     dst.AddPage(src.Pages[i]);
+                }
             }
+            cancellationToken.ThrowIfCancellationRequested();
             dst.Save(outputPath);
             return outputPath;
         }
@@ -496,6 +558,16 @@ namespace EduVS.Helpers
         public (List<TestData> tests, Dictionary<int, List<int>> pagesByTestId)
             Scan(string combinedPdfPath, RectangleF qrTopRightRel, RectangleF nameBoxTopLeftRel)
         {
+            return ScanCore(combinedPdfPath, qrTopRightRel, nameBoxTopLeftRel, progress: null, cancellationToken: CancellationToken.None);
+        }
+
+        public Task<(List<TestData> tests, Dictionary<int, List<int>> pagesByTestId)> ScanAsync(string combinedPdfPath, RectangleF qrTopRightRel, RectangleF nameBoxTopLeftRel, IProgress<GenerateTestResultsStartProgressInfo>? progress, CancellationToken cancellationToken)
+        {
+            return Task.Run(() => ScanCore(combinedPdfPath, qrTopRightRel, nameBoxTopLeftRel, progress, cancellationToken), cancellationToken);
+        }
+
+        private (List<TestData> tests, Dictionary<int, List<int>> pagesByTestId) ScanCore(string combinedPdfPath, RectangleF qrTopRightRel, RectangleF nameBoxTopLeftRel, IProgress<GenerateTestResultsStartProgressInfo>? progress, CancellationToken cancellationToken)
+        {
             var tests = new List<TestData>();
             var pagesByTest = new Dictionary<int, List<int>>();
             QrCodeData? metadataTemplate = null;
@@ -504,9 +576,11 @@ namespace EduVS.Helpers
 
             using var src = PdfReader.Open(combinedPdfPath, PdfDocumentOpenMode.Import);
             var haveNameBox = new HashSet<int>();
+            var totalPages = src.PageCount;
 
             for (int i = 0; i < src.PageCount; i++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var scanResult = ScanPageQrData(combinedPdfPath, i, reader, qrTopRightRel);
                 metadataTemplate ??= scanResult.QrData;
 
@@ -537,6 +611,13 @@ namespace EduVS.Helpers
                     tests.Add(new TestData { TestId = q.TestId, NameBoxBitmap = nb });
                     haveNameBox.Add(q.TestId);
                 }
+
+                progress?.Report(new GenerateTestResultsStartProgressInfo
+                {
+                    ProcessedPages = i + 1,
+                    TotalPages = totalPages,
+                    StatusText = $"Scanning page {i + 1} of {totalPages}"
+                });
             }
 
             // sort pages
