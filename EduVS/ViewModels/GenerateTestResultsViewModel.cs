@@ -24,16 +24,20 @@ namespace EduVS.ViewModels
         [ObservableProperty] private ObservableCollection<TestData> tests = new();
         [ObservableProperty] private TestData? selectedTest;
 
+        [ObservableProperty] private string? detectedTestSubject;
+        [ObservableProperty] private string? detectedTestName;
+
         [ObservableProperty] private bool isStarted;
 
-        private readonly PdfManager _pdf = new();
+        private readonly PdfManager _pdf;
         private readonly IServiceProvider _serviceProvider;
         private string? _combinedPdfPath;
         private Dictionary<int, List<int>> _pagesByTestId = new();
 
-        public GenerateTestResultsViewModel(ILogger<GenerateTestResultsViewModel> logger, IServiceProvider serviceProvider) : base(logger)
+        public GenerateTestResultsViewModel(ILogger<GenerateTestResultsViewModel> logger, IServiceProvider serviceProvider, PdfManager pdfManager) : base(logger)
         {
             _serviceProvider = serviceProvider;
+            _pdf = pdfManager;
         }
 
         partial void OnStudentsFilePathChanged(string value)
@@ -91,20 +95,31 @@ namespace EduVS.ViewModels
                 return;
             }
 
-            Students = new ObservableCollection<StudentData>(parsedStudents);
+            try
+            {
+                var temp = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"combined_{Guid.NewGuid():N}.pdf");
+                var combinedPdfPath = _pdf.MergePdfs(SelectedPdfPaths, temp);
+                var info = _pdf.ReadTestCheckPdfInfo(combinedPdfPath);
 
-            var temp = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"combined_{Guid.NewGuid():N}.pdf");
-            _combinedPdfPath = _pdf.MergePdfs(SelectedPdfPaths, temp);
+                var qrTopRight = new System.Drawing.RectangleF(0.55f, 0f, 0.45f, 0.45f);
+                var nameBoxTL = new System.Drawing.RectangleF(0.175f, 0.0095f, 0.49f, 0.06f);
 
-            var qrTopRight = new System.Drawing.RectangleF(0.55f, 0f, 0.45f, 0.45f);
-            var nameBoxTL = new System.Drawing.RectangleF(0.175f, 0.0095f, 0.49f, 0.06f);
+                var (testsFound, pagesMap) = _pdf.Scan(combinedPdfPath, qrTopRight, nameBoxTL);
 
-            var (testsFound, pagesMap) = _pdf.Scan(_combinedPdfPath, qrTopRight, nameBoxTL);
-            Tests = new ObservableCollection<TestData>(testsFound);
-            SelectedTest = Tests.FirstOrDefault();
-            _pagesByTestId = new Dictionary<int, List<int>>(pagesMap);
-
-            IsStarted = true;
+                Students = new ObservableCollection<StudentData>(parsedStudents);
+                Tests = new ObservableCollection<TestData>(testsFound);
+                SelectedTest = Tests.FirstOrDefault();
+                DetectedTestSubject = info.MetadataQr?.TestSubject;
+                DetectedTestName = info.MetadataQr?.TestName;
+                _pagesByTestId = new Dictionary<int, List<int>>(pagesMap);
+                _combinedPdfPath = combinedPdfPath;
+                IsStarted = true;
+            }
+            catch (OperationCanceledException)
+            {
+                Abort();
+                MessageBox.Show("Loading was canceled during manual QR resolution.", "Loading Canceled", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
         }
 
         private List<StudentData> ParseStudentsFromFile()
@@ -327,6 +342,8 @@ namespace EduVS.ViewModels
             SelectedTest = null;
             Tests.Clear();
             Students.Clear();
+            DetectedTestSubject = null;
+            DetectedTestName = null;
             _pagesByTestId.Clear();
             _combinedPdfPath = null;
             IsStarted = false;
@@ -353,19 +370,26 @@ namespace EduVS.ViewModels
                 return;
             }
 
-            var toExport = Students.Where(s => s.TestId.HasValue)
-                                   .Select(s => (s.DisplayName, s.TestId!.Value))
-                                   .ToList();
+            var assignedExports = Students.Where(s => s.TestId.HasValue)
+                                          .Select(s => (s.DisplayName, s.TestId!.Value))
+                                          .ToList();
+            var assignedTestIds = assignedExports.Select(x => x.Item2).ToHashSet();
+            var unassignedExports = _pagesByTestId.Keys
+                                                  .Where(testId => !assignedTestIds.Contains(testId))
+                                                  .OrderBy(testId => testId)
+                                                  .Select(testId => ("#", testId));
+            var toExport = assignedExports.Concat(unassignedExports).ToList();
+
             if (toExport.Count == 0)
             {
-                MessageBox.Show("No students have a TestId assigned.", "Export", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show("No tests are available to export.", "Export", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
             var outputFolder = PdfPicker.PickFolder();
             if (outputFolder is null) return;
 
-            _pdf.ExportPerStudent(_combinedPdfPath, _pagesByTestId, toExport, outputFolder);
+            _pdf.ExportPerStudent(_combinedPdfPath, _pagesByTestId, toExport, outputFolder, DetectedTestName);
         }
     }
 }

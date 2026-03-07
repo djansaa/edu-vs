@@ -11,6 +11,7 @@ namespace EduVS.ViewModels
     public partial class GenerateTestViewModel : BaseViewModel
     {
         private const int MaxSubjectAndNameChars = 52;
+        private readonly PdfManager _pdfManager;
 
         [ObservableProperty] private string? testSubject;
         [ObservableProperty] private string? testName;
@@ -26,8 +27,9 @@ namespace EduVS.ViewModels
         public RelayCommand BrowseTemplateBCommand { get; }
         public RelayCommand ExportCommand { get; }
 
-        public GenerateTestViewModel(ILogger<GenerateTestViewModel> logger) : base(logger)
+        public GenerateTestViewModel(ILogger<GenerateTestViewModel> logger, PdfManager pdfManager) : base(logger)
         {
+            _pdfManager = pdfManager;
             TestDate = DateTime.Today;
 
             BrowseTemplateACommand = new RelayCommand(BrowseTemplateA);
@@ -127,8 +129,7 @@ namespace EduVS.ViewModels
                 $"Output Path: {outputPath}");
 
             // create PDF
-            var pdfManager = new PdfManager();
-            pdfManager.GenerateTestPrintTemplate(outputPath, TestSubject, TestName, TestDate, TemplateAPath, TemplateACount, TemplateBPath, TemplateBCount);
+            _pdfManager.GenerateTestPrintTemplate(outputPath, TestSubject, TestName, TestDate, TemplateAPath, TemplateACount, TemplateBPath, TemplateBCount);
 
             MessageBox.Show("Test PDF generated successfully.", "Export Complete", MessageBoxButton.OK, MessageBoxImage.Information);
         }

@@ -14,11 +14,16 @@ using ZXing.Windows.Compatibility;
 
 namespace EduVS.Helpers
 {
-    internal class PdfManager
+    public class PdfManager
     {
-        public PdfManager()
-        {
+        private const float ManualQrPreviewRelW = 0.25f;
+        private const float ManualQrPreviewRelH = 0.10f;
 
+        private readonly IManualQrResolutionDialogService _manualQrDialog;
+
+        public PdfManager(IManualQrResolutionDialogService manualQrDialog)
+        {
+            _manualQrDialog = manualQrDialog;
         }
 
         public void GenerateTestPrintTemplate(string outputPath, string testSubject, string testName, DateTime testDate, string? templateAPath, int templateACount, string? templateBPath, int templateBCount)
@@ -116,7 +121,7 @@ namespace EduVS.Helpers
 
                         // add group letter, test id and page id next to the qr code
                         // on all pages
-                        gfx.DrawString($"{groupLetter}{testCount} [{p + 1}]", fontBold, XBrushes.Black, new XPoint(margin + 430, top + 37));
+                        gfx.DrawString($"{groupLetter}{testCount} [{p + 1}]", fontBold, XBrushes.Black, new XPoint(margin + 425, top + 37));
 
                         // ##################### QR CODE #####################
 
@@ -178,6 +183,8 @@ namespace EduVS.Helpers
             using var src = PdfReader.Open(inputPath, PdfDocumentOpenMode.Import);
             var reader = CreateQrReader();
 
+            QrCodeData? metadataTemplate = null;
+
             // for each page -> try decode qr
             for (int pageIndex = 0; pageIndex < src.PageCount; pageIndex++)
             {
@@ -185,12 +192,17 @@ namespace EduVS.Helpers
 
                 if (scanResult.QrData is null)
                 {
-                    // TODO: QR code not found -> show window and ask user to select 1) page (front or back), 2) test id, 3) test group (if split), 4) rotation
-                    Debug.WriteLine($"Page: {pageIndex + 1} - QR NOT FOUND");
-                    throw new Exception($"Page: {pageIndex + 1} - QR NOT FOUND");
+                    var request = CreateManualQrResolutionRequest(inputPath, pageIndex, metadataTemplate);
+                    var manualResult = _manualQrDialog.Show(request)
+                        ?? throw CreateManualResolutionCanceledException();
+
+                    var manualQr = BuildManualQrData(manualResult, metadataTemplate);
+                    Debug.WriteLine($"Page: {pageIndex + 1} - MANUAL QR: TestId={manualQr.TestId}, GroupId={manualQr.GroupId}, Page={manualQr.Page} | Rotation={manualResult.Rotation}");
+                    outputPagesData.Add((pageIndex, manualResult.Rotation, manualQr));
                 }
                 else
                 {
+                    metadataTemplate ??= scanResult.QrData;
                     Debug.WriteLine($"Page: {pageIndex + 1} - QR: TestId={scanResult.QrData.TestId}, GroupId={scanResult.QrData.GroupId}, TestName={scanResult.QrData.TestName}, TestDate={scanResult.QrData.TestDate:yyyy-MM-dd}, Page={scanResult.QrData.Page} | Rotation={scanResult.Rotation}");
                     outputPagesData.Add((pageIndex, scanResult.Rotation, scanResult.QrData));
                 }
@@ -231,7 +243,7 @@ namespace EduVS.Helpers
             }
         }
 
-        public (int PageCount, QrCodeData? MetadataQr) ReadTestCheckPdfInfo(string inputPath)
+        internal (int PageCount, QrCodeData? MetadataQr) ReadTestCheckPdfInfo(string inputPath)
         {
             if (string.IsNullOrEmpty(inputPath) || !File.Exists(inputPath))
             {
@@ -272,7 +284,7 @@ namespace EduVS.Helpers
             dst.Save(outputPath);
         }
 
-        private (string? text, int rotation) TryDecodePage(BarcodeReader reader, Bitmap full, RectangleF? qrTopRightRel = null, float relW = 0.25f, float relH = 0.10f)
+        private (string? text, int rotation) TryDecodePage(BarcodeReader reader, Bitmap full, RectangleF? qrTopRightRel = null, float relW = 0.30f, float relH = 0.10f)
         {
             string? TryDecode(Bitmap bitmap)
             {
@@ -318,6 +330,63 @@ namespace EduVS.Helpers
             }
 
             return (rotation, qrData);
+        }
+
+        private ManualQrResolutionRequest CreateManualQrResolutionRequest(string inputPath, int pageIndex, QrCodeData? metadataTemplate)
+        {
+            var previews = CreateQrPreviewPair(inputPath, pageIndex);
+
+            return new ManualQrResolutionRequest
+            {
+                SourcePageNumber = pageIndex + 1,
+                OriginalPreview = previews.OriginalPreview,
+                RotatedPreview = previews.RotatedPreview,
+                SuggestedGroupId = metadataTemplate?.GroupId is 'A' or 'B' ? metadataTemplate.GroupId : 'A',
+                SuggestedPageNumber = 1,
+                TestSubject = metadataTemplate?.TestSubject,
+                TestName = metadataTemplate?.TestName
+            };
+        }
+
+        private (BitmapSource OriginalPreview, BitmapSource RotatedPreview) CreateQrPreviewPair(string inputPath, int pageIndex)
+        {
+            using var sk = PdfPageToSKBitmap(inputPath, pageIndex);
+            using var full = SKBitmapToBitmap(sk);
+            using var rotated = RotateBitmap180(full);
+
+            var originalPreview = CropTopRightToBitmapSource(full, ManualQrPreviewRelW, ManualQrPreviewRelH);
+            var rotatedPreview = CropTopRightToBitmapSource(rotated, ManualQrPreviewRelW, ManualQrPreviewRelH);
+
+            return (originalPreview, rotatedPreview);
+        }
+
+        private BitmapSource CropTopRightToBitmapSource(Bitmap full, float relW = ManualQrPreviewRelW, float relH = ManualQrPreviewRelH)
+        {
+            using var crop = CropTopRight(full, relW, relH);
+            using var ms = new MemoryStream();
+            crop.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+            ms.Position = 0;
+
+            var image = new BitmapImage();
+            image.BeginInit();
+            image.CacheOption = BitmapCacheOption.OnLoad;
+            image.StreamSource = ms;
+            image.EndInit();
+            image.Freeze();
+            return image;
+        }
+
+        private QrCodeData BuildManualQrData(ManualQrResolutionResult manualResult, QrCodeData? metadataTemplate)
+        {
+            return new QrCodeData
+            {
+                TestId = manualResult.TestId,
+                GroupId = manualResult.GroupId,
+                Page = manualResult.Page,
+                TestSubject = metadataTemplate?.TestSubject ?? string.Empty,
+                TestName = metadataTemplate?.TestName ?? string.Empty,
+                TestDate = metadataTemplate?.TestDate
+            };
         }
 
         private BarcodeReader CreateQrReader()
@@ -396,6 +465,11 @@ namespace EduVS.Helpers
 
         private int NormalizeRotate(int deg) => (((deg % 360) + 360) % 360) switch { 0 => 0, 90 => 90, 180 => 180, 270 => 270, _ => 0 };
 
+        private static OperationCanceledException CreateManualResolutionCanceledException()
+        {
+            return new OperationCanceledException("Manual QR resolution was canceled.");
+        }
+
         private static string EncodeQrDate(DateTime testDate)
         {
             return $"{testDate:yy}{testDate.Month:X}{testDate:dd}";
@@ -424,17 +498,9 @@ namespace EduVS.Helpers
         {
             var tests = new List<TestData>();
             var pagesByTest = new Dictionary<int, List<int>>();
+            QrCodeData? metadataTemplate = null;
 
-            var reader = new ZXing.Windows.Compatibility.BarcodeReader
-            {
-                AutoRotate = false,
-                Options = new DecodingOptions
-                {
-                    TryHarder = true,
-                    PossibleFormats = new[] { BarcodeFormat.QR_CODE },
-                    CharacterSet = "UTF-8"
-                }
-            };
+            var reader = CreateQrReader();
 
             using var src = PdfReader.Open(combinedPdfPath, PdfDocumentOpenMode.Import);
             var haveNameBox = new HashSet<int>();
@@ -442,14 +508,22 @@ namespace EduVS.Helpers
             for (int i = 0; i < src.PageCount; i++)
             {
                 var scanResult = ScanPageQrData(combinedPdfPath, i, reader, qrTopRightRel);
+                metadataTemplate ??= scanResult.QrData;
 
-                // TODO: show window and ask user to set test id
-                if (scanResult.QrData is null)
+                var qrData = scanResult.QrData;
+                var rotation = scanResult.Rotation;
+
+                if (qrData is null)
                 {
-                    throw new Exception($"Page: {i + 1} - QR NOT FOUND");
+                    var request = CreateManualQrResolutionRequest(combinedPdfPath, i, metadataTemplate);
+                    var manualResult = _manualQrDialog.Show(request)
+                        ?? throw CreateManualResolutionCanceledException();
+
+                    qrData = BuildManualQrData(manualResult, metadataTemplate);
+                    rotation = manualResult.Rotation;
                 }
 
-                var q = scanResult.QrData;
+                var q = qrData;
 
                 if (!pagesByTest.TryGetValue(q.TestId, out var list))
                     pagesByTest[q.TestId] = list = new List<int>();
@@ -458,7 +532,8 @@ namespace EduVS.Helpers
                 if (q.Page == 1 && !haveNameBox.Contains(q.TestId))
                 {
                     using var skb = PdfPageToSKBitmap(combinedPdfPath, i);
-                    var nb = CropRelToBitmapSource(skb, nameBoxTopLeftRel);
+                    using var oriented = rotation == 180 ? RotateSK180(skb) : null;
+                    var nb = CropRelToBitmapSource(oriented ?? skb, nameBoxTopLeftRel);
                     tests.Add(new TestData { TestId = q.TestId, NameBoxBitmap = nb });
                     haveNameBox.Add(q.TestId);
                 }
@@ -478,10 +553,12 @@ namespace EduVS.Helpers
         public void ExportPerStudent(string combinedPdfPath,
                                      IReadOnlyDictionary<int, List<int>> pagesByTestId,
                                      IEnumerable<(string name, int testId)> assignments,
-                                     string outputFolder)
+                                     string outputFolder,
+                                     string? testName = null)
         {
             Directory.CreateDirectory(outputFolder);
             using var src = PdfReader.Open(combinedPdfPath, PdfDocumentOpenMode.Import);
+            var exportLabel = string.IsNullOrWhiteSpace(testName) ? "Test" : Safe(testName);
 
             foreach (var (name, testId) in assignments)
             {
@@ -490,7 +567,7 @@ namespace EduVS.Helpers
                 using var dst = new PdfDocument();
                 foreach (var p in pages) dst.AddPage(src.Pages[p]);
 
-                var file = Path.Combine(outputFolder, $"{Safe(name)}_Test_{testId}.pdf");
+                var file = Path.Combine(outputFolder, $"{Safe(name)}_{exportLabel}_{testId}.pdf");
                 dst.Save(file);
             }
         }
@@ -519,6 +596,16 @@ namespace EduVS.Helpers
             if (!src.ExtractSubset(subset, new SKRectI(x, y, x + w, y + h)))
                 throw new InvalidOperationException("ExtractSubset failed.");
             return subset;
+        }
+
+        static SKBitmap RotateSK180(SKBitmap src)
+        {
+            var dst = new SKBitmap(src.Width, src.Height, src.ColorType, src.AlphaType);
+            using var canvas = new SKCanvas(dst);
+            canvas.Translate(src.Width, src.Height);
+            canvas.RotateDegrees(180);
+            canvas.DrawBitmap(src, 0, 0);
+            return dst;
         }
 
         static BitmapSource CropRelToBitmapSource(SKBitmap src, RectangleF rel)

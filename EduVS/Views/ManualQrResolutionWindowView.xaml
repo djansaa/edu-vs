@@ -1,0 +1,223 @@
+<Window x:Class="EduVS.Views.ManualQrResolutionWindowView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="{Binding DialogTitle}"
+        Width="980"
+        Height="720"
+        MinWidth="900"
+        MinHeight="640"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize">
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="16"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="16"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="16"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   Text="{Binding DialogTitle}"
+                   FontSize="22"
+                   FontWeight="SemiBold"/>
+
+        <StackPanel Grid.Row="1"
+                    Margin="0,8,0,0">
+            <TextBlock Text="{Binding PageLabel}"
+                       FontWeight="Bold"/>
+            <TextBlock Text="{Binding TestSubject, StringFormat=Subject: {0}, TargetNullValue=''}"/>
+            <TextBlock Text="{Binding TestName, StringFormat=Name: {0}, TargetNullValue=''}"/>
+        </StackPanel>
+
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="16"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Button Grid.Column="0"
+                    Padding="0"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Command="{Binding SelectOriginalCommand}">
+                <Border Padding="10"
+                        CornerRadius="8">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="BorderBrush" Value="#A0A0A0"/>
+                            <Setter Property="BorderThickness" Value="2"/>
+                            <Setter Property="Background" Value="#FFF7F7F7"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsOriginalSelected}" Value="True">
+                                    <Setter Property="BorderBrush" Value="#0B6E4F"/>
+                                    <Setter Property="BorderThickness" Value="4"/>
+                                    <Setter Property="Background" Value="#FFEAF7F1"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <StackPanel>
+                        <TextBlock Text="Original orientation"
+                                   FontWeight="Bold"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,0,0,8"/>
+                        <Border BorderBrush="#C8C8C8"
+                                BorderThickness="1"
+                                Background="White">
+                            <Image Source="{Binding OriginalPreview}"
+                                   Stretch="Uniform"
+                                   Height="420"/>
+                        </Border>
+                    </StackPanel>
+                </Border>
+            </Button>
+
+            <Button Grid.Column="2"
+                    Padding="0"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Command="{Binding SelectRotatedCommand}">
+                <Border Padding="10"
+                        CornerRadius="8">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="BorderBrush" Value="#A0A0A0"/>
+                            <Setter Property="BorderThickness" Value="2"/>
+                            <Setter Property="Background" Value="#FFF7F7F7"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsRotatedSelected}" Value="True">
+                                    <Setter Property="BorderBrush" Value="#0B6E4F"/>
+                                    <Setter Property="BorderThickness" Value="4"/>
+                                    <Setter Property="Background" Value="#FFEAF7F1"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <StackPanel>
+                        <TextBlock Text="Rotate 180°"
+                                   FontWeight="Bold"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,0,0,8"/>
+                        <Border BorderBrush="#C8C8C8"
+                                BorderThickness="1"
+                                Background="White">
+                            <Image Source="{Binding RotatedPreview}"
+                                   Stretch="Uniform"
+                                   Height="420"/>
+                        </Border>
+                    </StackPanel>
+                </Border>
+            </Button>
+        </Grid>
+
+        <Grid Grid.Row="5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="130"/>
+                <ColumnDefinition Width="20"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="110"/>
+                <ColumnDefinition Width="20"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="130"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="0"
+                       Text="TestId:"
+                       VerticalAlignment="Center"
+                       FontWeight="Bold"/>
+            <Grid Grid.Column="1"
+                  Margin="8,0,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="28"/>
+                </Grid.ColumnDefinitions>
+                <TextBox Grid.Column="0"
+                         x:Name="TestIdTextBox"
+                         VerticalContentAlignment="Center"
+                         PreviewTextInput="NumericTextBox_PreviewTextInput"
+                         Text="{Binding TestId, UpdateSourceTrigger=PropertyChanged, TargetNullValue='0'}"/>
+                <Grid Grid.Column="1">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Button Grid.Row="0"
+                            Content="+"
+                            Padding="0"
+                            Command="{Binding IncreaseTestIdCommand}"/>
+                    <Button Grid.Row="1"
+                            Content="-"
+                            Padding="0"
+                            Command="{Binding DecreaseTestIdCommand}"/>
+                </Grid>
+            </Grid>
+
+            <TextBlock Grid.Column="3"
+                       Text="Group:"
+                       VerticalAlignment="Center"
+                       FontWeight="Bold"/>
+            <ComboBox Grid.Column="4"
+                      Margin="8,0,0,0"
+                      ItemsSource="{Binding AvailableGroups}"
+                      SelectedItem="{Binding SelectedGroupId}"/>
+
+            <TextBlock Grid.Column="6"
+                       Text="Page:"
+                       VerticalAlignment="Center"
+                       FontWeight="Bold"/>
+            <Grid Grid.Column="7"
+                  Margin="8,0,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="28"/>
+                </Grid.ColumnDefinitions>
+                <TextBox Grid.Column="0"
+                         x:Name="PageTextBox"
+                         VerticalContentAlignment="Center"
+                         PreviewTextInput="NumericTextBox_PreviewTextInput"
+                         Text="{Binding PageNumber, UpdateSourceTrigger=PropertyChanged, TargetNullValue='1'}"/>
+                <Grid Grid.Column="1">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Button Grid.Row="0"
+                            Content="+"
+                            Padding="0"
+                            Command="{Binding IncreasePageNumberCommand}"/>
+                    <Button Grid.Row="1"
+                            Content="-"
+                            Padding="0"
+                            Command="{Binding DecreasePageNumberCommand}"/>
+                </Grid>
+            </Grid>
+        </Grid>
+
+        <StackPanel Grid.Row="7"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right">
+            <Button Content="Confirm"
+                    Width="110"
+                    Margin="0,0,10,0"
+                    IsDefault="True"
+                    Command="{Binding ConfirmCommand}"
+                    CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"/>
+            <Button Content="Cancel"
+                    Width="110"
+                    IsCancel="True"
+                    Command="{Binding CancelCommand}"
+                    CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"/>
+        </StackPanel>
+    </Grid>
+</Window>

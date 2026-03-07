@@ -9,6 +9,8 @@ namespace EduVS.ViewModels
 {
     public partial class PrepareTestCheckViewModel : BaseViewModel
     {
+        private readonly PdfManager _pdfManager;
+
         [ObservableProperty] private string? pdfPath;
         [ObservableProperty] private string? detectedTestSubject;
         [ObservableProperty] private string? detectedTestName;
@@ -38,8 +40,9 @@ namespace EduVS.ViewModels
         public bool CanReadPdfInfo => !string.IsNullOrWhiteSpace(PdfPath) && !IsReadingPdfInfo;
         public bool CanConfigureOutput => IsPdfInfoLoaded && !IsReadingPdfInfo;
 
-        public PrepareTestCheckViewModel(ILogger<PrepareTestCheckViewModel> logger) : base(logger)
+        public PrepareTestCheckViewModel(ILogger<PrepareTestCheckViewModel> logger, PdfManager pdfManager) : base(logger)
         {
+            _pdfManager = pdfManager;
             BrowsePdfCommand = new RelayCommand(BrowsePdf);
             ReadPdfInfoCommand = new RelayCommand(ReadPdfInfo);
             BrowsePdfANewCommmand = new RelayCommand(BrowsePdfANew);
@@ -85,8 +88,7 @@ namespace EduVS.ViewModels
                 IsReadingPdfInfo = true;
                 ResetLoadedPdfInfo();
 
-                var pdfManager = new PdfManager();
-                var info = pdfManager.ReadTestCheckPdfInfo(PdfPath);
+                var info = _pdfManager.ReadTestCheckPdfInfo(PdfPath);
 
                 SourcePdfPageCount = info.PageCount;
 
@@ -159,8 +161,15 @@ namespace EduVS.ViewModels
                 $"Output path B: {PdfPathB}\n" +
                 $"Sorting: {(SortByPageNumber ? "By page number" : "By test number")}");
 
-            var pdfManager = new PdfManager();
-            pdfManager.GenerateTestCheck(PdfPath, IsSplitByGroup, IsMergedSingle, SortByPageNumber, SortByTestNumber, PdfPathA, PdfPathB ?? string.Empty);
+            try
+            {
+                _pdfManager.GenerateTestCheck(PdfPath, IsSplitByGroup, IsMergedSingle, SortByPageNumber, SortByTestNumber, PdfPathA, PdfPathB ?? string.Empty);
+            }
+            catch (OperationCanceledException)
+            {
+                MessageBox.Show("Export was canceled during manual QR resolution.", "Export Canceled", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
 
             MessageBox.Show("Test check PDF generated successfully.", "Export Complete", MessageBoxButton.OK, MessageBoxImage.Information);
         }
