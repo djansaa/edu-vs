@@ -386,10 +386,71 @@ namespace EduVS.ViewModels
                 return;
             }
 
+            var outlierExports = GetOutlierExportPageCounts(toExport);
+            if (outlierExports.Count > 0)
+            {
+                MessageBox.Show(
+                    "Some exported PDFs have an outlier page count.\n\n" +
+                    string.Join("\n", outlierExports.Select(item => $"\"{item.FileName}\" -> {item.PageCount} pages")),
+                    "Outlier PDF Warning",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+
             var outputFolder = PdfPicker.PickFolder();
             if (outputFolder is null) return;
 
             _pdf.ExportPerStudent(_combinedPdfPath, _pagesByTestId, toExport, outputFolder, DetectedTestName);
+        }
+
+        private List<(string FileName, int PageCount)> GetOutlierExportPageCounts(IEnumerable<(string name, int testId)> exports)
+        {
+            var exportedTests = exports
+                .Select(item => new
+                {
+                    item.name,
+                    item.testId,
+                    PageCount = _pagesByTestId.TryGetValue(item.testId, out var pages) ? pages.Count : 0
+                })
+                .Where(item => item.PageCount > 0)
+                .ToList();
+
+            if (exportedTests.Count == 0)
+            {
+                return new List<(string FileName, int PageCount)>();
+            }
+
+            var expectedPageCount = exportedTests
+                .GroupBy(item => item.PageCount)
+                .OrderByDescending(group => group.Count())
+                .ThenBy(group => group.Key)
+                .Select(group => group.Key)
+                .First();
+
+            return exportedTests
+                .Where(item => item.PageCount != expectedPageCount)
+                .Select(item => (FileName: BuildExportFileName(item.name, item.testId), item.PageCount))
+                .Distinct()
+                .OrderBy(item => item.FileName)
+                .ToList();
+        }
+
+        private string BuildExportFileName(string name, int testId)
+        {
+            var exportLabel = string.IsNullOrWhiteSpace(DetectedTestName) ? "Test" : SanitizeFileNamePart(DetectedTestName);
+            return $"{SanitizeFileNamePart(name)}_{exportLabel}_{testId}.pdf";
+        }
+
+        private static string SanitizeFileNamePart(string value)
+        {
+            var sanitized = value;
+
+            foreach (var invalidChar in Path.GetInvalidFileNameChars())
+            {
+                sanitized = sanitized.Replace(invalidChar, '_');
+            }
+
+            return sanitized.Trim();
         }
     }
 }
