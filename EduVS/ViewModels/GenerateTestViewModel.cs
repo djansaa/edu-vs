@@ -124,27 +124,31 @@ namespace EduVS.ViewModels
             var outputPath = PdfPicker.PickPdfSavePath($"{testSubject}_{testName}_{TestDate:yyyy-MM-dd}_print.pdf");
             if (outputPath is null) return;
 
-            _logger.LogInformation($"Exporting test with the following details:\n\n" +
-                $"Test Subject: {testSubject}\n" +
-                $"Test Name: {testName}\n" +
-                $"Test Date: {TestDate:yyyy-MM-dd}\n" +
-                $"Template A: {(string.IsNullOrEmpty(TemplateAPath) ? "None" : TemplateAPath)} (Count: {TemplateACount})\n" +
-                $"Template B: {(string.IsNullOrEmpty(TemplateBPath) ? "None" : TemplateBPath)} (Count: {TemplateBCount})\n\n" +
-                $"Output Path: {outputPath}");
-
-            var totalTestsToGenerate = 0;
-            if (!string.IsNullOrWhiteSpace(TemplateAPath) && TemplateACount > 0) totalTestsToGenerate += TemplateACount;
-            if (!string.IsNullOrWhiteSpace(TemplateBPath) && TemplateBCount > 0) totalTestsToGenerate += TemplateBCount;
-
-            var progressWindow = _serviceProvider.GetRequiredService<GenerateTestProgressWindowView>();
-            var progressVm = progressWindow.ViewModel;
-            progressVm.Initialize(totalTestsToGenerate);
-            var ownerWindow = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive && w != progressWindow);
-            progressWindow.Owner = ownerWindow;
-            progressWindow.Show();
+            GenerateTestProgressWindowView? progressWindow = null;
+            GenerateTestProgressViewModel? progressVm = null;
+            Window? ownerWindow = null;
 
             try
             {
+                _logger.LogInformation($"Exporting test with the following details:\n\n" +
+                    $"Test Subject: {testSubject}\n" +
+                    $"Test Name: {testName}\n" +
+                    $"Test Date: {TestDate:yyyy-MM-dd}\n" +
+                    $"Template A: {(string.IsNullOrEmpty(TemplateAPath) ? "None" : TemplateAPath)} (Count: {TemplateACount})\n" +
+                    $"Template B: {(string.IsNullOrEmpty(TemplateBPath) ? "None" : TemplateBPath)} (Count: {TemplateBCount})\n\n" +
+                    $"Output Path: {outputPath}");
+
+                var totalTestsToGenerate = 0;
+                if (!string.IsNullOrWhiteSpace(TemplateAPath) && TemplateACount > 0) totalTestsToGenerate += TemplateACount;
+                if (!string.IsNullOrWhiteSpace(TemplateBPath) && TemplateBCount > 0) totalTestsToGenerate += TemplateBCount;
+
+                progressWindow = _serviceProvider.GetRequiredService<GenerateTestProgressWindowView>();
+                progressVm = progressWindow.ViewModel;
+                progressVm.Initialize(totalTestsToGenerate);
+                ownerWindow = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive && w != progressWindow);
+                progressWindow.Owner = ownerWindow;
+                progressWindow.Show();
+
                 var progress = new Progress<GenerateTestProgressInfo>(progressVm.Report);
                 await _pdfManager.GenerateTestPrintTemplateAsync(
                     outputPath,
@@ -166,26 +170,26 @@ namespace EduVS.ViewModels
             }
             catch (OperationCanceledException)
             {
-                progressVm.Finish("Generation canceled.");
-                progressVm.CanClose = true;
-                progressWindow.Close();
+                progressVm?.Finish("Generation canceled.");
+                if (progressVm is not null) progressVm.CanClose = true;
+                progressWindow?.Close();
                 ownerWindow?.Activate();
                 ShowOwnedMessageBox(ownerWindow, "Test PDF generation was canceled.", "Export Canceled", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                progressVm.Finish("Generation failed.");
                 _logger.LogError(ex, "Failed to generate test PDF.");
-                progressVm.CanClose = true;
-                progressWindow.Close();
+                progressVm?.Finish("Generation failed.");
+                if (progressVm is not null) progressVm.CanClose = true;
+                progressWindow?.Close();
                 ownerWindow?.Activate();
                 ShowOwnedMessageBox(ownerWindow, $"Failed to generate test PDF.\n\n{ex.Message}", "Export Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
-                if (progressWindow.IsVisible)
+                if (progressWindow?.IsVisible == true)
                 {
-                    progressVm.CanClose = true;
+                    if (progressVm is not null) progressVm.CanClose = true;
                     progressWindow.Close();
                 }
             }

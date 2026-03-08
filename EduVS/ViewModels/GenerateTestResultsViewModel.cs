@@ -23,6 +23,8 @@ namespace EduVS.ViewModels
 
         [ObservableProperty] private ObservableCollection<TestData> tests = new();
         [ObservableProperty] private TestData? selectedTest;
+        [ObservableProperty] private ObservableCollection<AssignedStudentTestData> assignedStudentTests = new();
+        [ObservableProperty] private AssignedStudentTestData? selectedAssignedStudentTest;
 
         [ObservableProperty] private string? detectedTestSubject;
         [ObservableProperty] private string? detectedTestName;
@@ -33,6 +35,8 @@ namespace EduVS.ViewModels
         private readonly IServiceProvider _serviceProvider;
         private string? _combinedPdfPath;
         private Dictionary<int, List<int>> _pagesByTestId = new();
+        private Dictionary<StudentData, int> _studentOrder = new();
+        private Dictionary<TestData, int> _testOrder = new();
 
         public GenerateTestResultsViewModel(ILogger<GenerateTestResultsViewModel> logger, IServiceProvider serviceProvider, PdfManager pdfManager) : base(logger)
         {
@@ -95,15 +99,19 @@ namespace EduVS.ViewModels
                 return;
             }
 
-            var progressWindow = _serviceProvider.GetRequiredService<GenerateTestResultsStartProgressWindowView>();
-            var progressVm = progressWindow.ViewModel;
-            progressVm.Initialize();
-            var ownerWindow = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive && w != progressWindow);
-            progressWindow.Owner = ownerWindow;
-            progressWindow.Show();
+            GenerateTestResultsStartProgressWindowView? progressWindow = null;
+            GenerateTestResultsStartProgressViewModel? progressVm = null;
+            Window? ownerWindow = null;
 
             try
             {
+                progressWindow = _serviceProvider.GetRequiredService<GenerateTestResultsStartProgressWindowView>();
+                progressVm = progressWindow.ViewModel;
+                progressVm.Initialize();
+                ownerWindow = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive && w != progressWindow);
+                progressWindow.Owner = ownerWindow;
+                progressWindow.Show();
+
                 var temp = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"combined_{Guid.NewGuid():N}.pdf");
                 var combinedPdfPath = await _pdf.MergePdfsAsync(SelectedPdfPaths, temp, progressVm.CancellationToken);
 
@@ -124,10 +132,19 @@ namespace EduVS.ViewModels
 
                 Students = new ObservableCollection<StudentData>(parsedStudents);
                 Tests = new ObservableCollection<TestData>(testsFound);
+                AssignedStudentTests = new ObservableCollection<AssignedStudentTestData>();
+                SelectedStudent = Students.FirstOrDefault();
                 SelectedTest = Tests.FirstOrDefault();
+                SelectedAssignedStudentTest = null;
                 DetectedTestSubject = info.MetadataQr?.TestSubject;
                 DetectedTestName = info.MetadataQr?.TestName;
                 _pagesByTestId = new Dictionary<int, List<int>>(pagesMap);
+                _studentOrder = parsedStudents
+                    .Select((student, index) => new { student, index })
+                    .ToDictionary(item => item.student, item => item.index);
+                _testOrder = testsFound
+                    .Select((test, index) => new { test, index })
+                    .ToDictionary(item => item.test, item => item.index);
                 _combinedPdfPath = combinedPdfPath;
                 IsStarted = true;
 
@@ -139,17 +156,27 @@ namespace EduVS.ViewModels
             catch (OperationCanceledException)
             {
                 Abort();
-                progressVm.Finish("Loading canceled.");
-                progressVm.CanClose = true;
-                progressWindow.Close();
+                progressVm?.Finish("Loading canceled.");
+                if (progressVm is not null) progressVm.CanClose = true;
+                progressWindow?.Close();
                 ownerWindow?.Activate();
                 ShowOwnedMessageBox(ownerWindow, "Loading was canceled during test result preparation.", "Loading Canceled", MessageBoxButton.OK, MessageBoxImage.Information);
             }
+            catch (Exception ex)
+            {
+                Abort();
+                _logger.LogError(ex, "Failed to start test result preparation.");
+                progressVm?.Finish("Loading failed.");
+                if (progressVm is not null) progressVm.CanClose = true;
+                progressWindow?.Close();
+                ownerWindow?.Activate();
+                ShowOwnedMessageBox(ownerWindow, $"Failed to prepare test results.\n\n{ex.Message}", "Loading Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
             finally
             {
-                if (progressWindow.IsVisible)
+                if (progressWindow?.IsVisible == true)
                 {
-                    progressVm.CanClose = true;
+                    if (progressVm is not null) progressVm.CanClose = true;
                     progressWindow.Close();
                 }
             }
@@ -185,6 +212,7 @@ namespace EduVS.ViewModels
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Failed to load students file from {StudentsFilePath}", StudentsFilePath);
                 MessageBox.Show($"Failed to load students file.\nError: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 return new List<StudentData>();
             }
@@ -372,12 +400,17 @@ namespace EduVS.ViewModels
         [RelayCommand]
         private void Abort()
         {
+            SelectedStudent = null;
             SelectedTest = null;
+            SelectedAssignedStudentTest = null;
             Tests.Clear();
             Students.Clear();
+            AssignedStudentTests.Clear();
             DetectedTestSubject = null;
             DetectedTestName = null;
             _pagesByTestId.Clear();
+            _studentOrder.Clear();
+            _testOrder.Clear();
             _combinedPdfPath = null;
             IsStarted = false;
         }
@@ -390,52 +423,98 @@ namespace EduVS.ViewModels
                 MessageBox.Show("Pick a student and a test.", "Assign", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
-            SelectedStudent.TestId = SelectedTest.TestId;
-            SelectedTest.Assigned = true;
+
+            var student = SelectedStudent;
+            var test = SelectedTest;
+            var studentIndex = Students.IndexOf(student);
+            var testIndex = Tests.IndexOf(test);
+
+            student.TestId = test.TestId;
+            test.Assigned = true;
+
+            AssignedStudentTests.Add(new AssignedStudentTestData(student, test));
+            Students.Remove(student);
+            Tests.Remove(test);
+
+            SelectedAssignedStudentTest = AssignedStudentTests.LastOrDefault();
+            SelectedStudent = GetNextSelection(Students, studentIndex);
+            SelectedTest = GetNextSelection(Tests, testIndex);
+        }
+
+        [RelayCommand]
+        private void Unassign()
+        {
+            if (SelectedAssignedStudentTest is null)
+            {
+                MessageBox.Show("Pick an assigned student and test.", "Unassign", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var assignedItem = SelectedAssignedStudentTest;
+            var assignedIndex = AssignedStudentTests.IndexOf(assignedItem);
+
+            assignedItem.Student.TestId = null;
+            assignedItem.Test.Assigned = false;
+
+            AssignedStudentTests.Remove(assignedItem);
+            InsertByOriginalOrder(Students, assignedItem.Student, _studentOrder);
+            InsertByOriginalOrder(Tests, assignedItem.Test, _testOrder);
+
+            SelectedAssignedStudentTest = GetNextSelection(AssignedStudentTests, assignedIndex);
+            SelectedStudent = assignedItem.Student;
+            SelectedTest = assignedItem.Test;
         }
 
         [RelayCommand]
         private void Export()
         {
-            if (string.IsNullOrEmpty(_combinedPdfPath) || _pagesByTestId.Count == 0)
+            try
             {
-                MessageBox.Show("Nothing to export. Run START first.", "Export", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
+                if (string.IsNullOrEmpty(_combinedPdfPath) || _pagesByTestId.Count == 0)
+                {
+                    MessageBox.Show("Nothing to export. Run START first.", "Export", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                var assignedExports = AssignedStudentTests
+                                              .Select(item => (item.Student.DisplayName, item.Test.TestId))
+                                              .ToList();
+                var assignedTestIds = assignedExports.Select(x => x.Item2).ToHashSet();
+                var unassignedExports = _pagesByTestId.Keys
+                                                      .Where(testId => !assignedTestIds.Contains(testId))
+                                                      .OrderBy(testId => testId)
+                                                      .Select(testId => ("#", testId));
+                var toExport = assignedExports.Concat(unassignedExports).ToList();
+
+                if (toExport.Count == 0)
+                {
+                    MessageBox.Show("No tests are available to export.", "Export", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                var outlierExports = GetOutlierExportPageCounts(toExport);
+                if (outlierExports.Count > 0)
+                {
+                    MessageBox.Show(
+                        "Some exported PDFs have an outlier page count.\n\n" +
+                        string.Join("\n", outlierExports.Select(item => $"\"{item.FileName}\" -> {item.PageCount} pages")),
+                        "Outlier PDF Warning",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                }
+
+                var outputFolder = PdfPicker.PickFolder();
+                if (outputFolder is null) return;
+
+                _pdf.ExportPerStudent(_combinedPdfPath, _pagesByTestId, toExport, outputFolder, DetectedTestName);
+
+                MessageBox.Show($"Tests were exported to {outputFolder} folder successfully.", "Export", MessageBoxButton.OK, MessageBoxImage.Information);
             }
-
-            var assignedExports = Students.Where(s => s.TestId.HasValue)
-                                          .Select(s => (s.DisplayName, s.TestId!.Value))
-                                          .ToList();
-            var assignedTestIds = assignedExports.Select(x => x.Item2).ToHashSet();
-            var unassignedExports = _pagesByTestId.Keys
-                                                  .Where(testId => !assignedTestIds.Contains(testId))
-                                                  .OrderBy(testId => testId)
-                                                  .Select(testId => ("#", testId));
-            var toExport = assignedExports.Concat(unassignedExports).ToList();
-
-            if (toExport.Count == 0)
+            catch (Exception ex)
             {
-                MessageBox.Show("No tests are available to export.", "Export", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
+                _logger.LogError(ex, "Failed to export test results.");
+                MessageBox.Show($"Failed to export test results.\n\n{ex.Message}", "Export Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-
-            var outlierExports = GetOutlierExportPageCounts(toExport);
-            if (outlierExports.Count > 0)
-            {
-                MessageBox.Show(
-                    "Some exported PDFs have an outlier page count.\n\n" +
-                    string.Join("\n", outlierExports.Select(item => $"\"{item.FileName}\" -> {item.PageCount} pages")),
-                    "Outlier PDF Warning",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-            }
-
-            var outputFolder = PdfPicker.PickFolder();
-            if (outputFolder is null) return;
-
-            _pdf.ExportPerStudent(_combinedPdfPath, _pagesByTestId, toExport, outputFolder, DetectedTestName);
-
-            MessageBox.Show($"Tests were exported to {outputFolder} folder successfully.", "Export", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private List<(string FileName, int PageCount)> GetOutlierExportPageCounts(IEnumerable<(string name, int testId)> exports)
@@ -486,6 +565,43 @@ namespace EduVS.ViewModels
             }
 
             return sanitized.Trim();
+        }
+
+        private static T? GetNextSelection<T>(IList<T> items, int previousIndex) where T : class
+        {
+            if (items.Count == 0)
+            {
+                return null;
+            }
+
+            var nextIndex = previousIndex < 0
+                ? 0
+                : Math.Min(previousIndex, items.Count - 1);
+
+            return items[nextIndex];
+        }
+
+        private static void InsertByOriginalOrder<T>(ObservableCollection<T> targetCollection, T item, IReadOnlyDictionary<T, int> originalOrder) where T : class
+        {
+            if (!originalOrder.TryGetValue(item, out var itemOrder))
+            {
+                targetCollection.Add(item);
+                return;
+            }
+
+            var insertIndex = 0;
+            while (insertIndex < targetCollection.Count)
+            {
+                var currentItem = targetCollection[insertIndex];
+                if (!originalOrder.TryGetValue(currentItem, out var currentOrder) || currentOrder > itemOrder)
+                {
+                    break;
+                }
+
+                insertIndex++;
+            }
+
+            targetCollection.Insert(insertIndex, item);
         }
 
         private static MessageBoxResult ShowOwnedMessageBox(Window? owner, string messageBoxText, string caption, MessageBoxButton button, MessageBoxImage icon)

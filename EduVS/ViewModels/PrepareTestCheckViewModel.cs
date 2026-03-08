@@ -32,12 +32,10 @@ namespace EduVS.ViewModels
         [ObservableProperty] private string? pdfPathB;
 
         public RelayCommand BrowsePdfCommand { get; }
-        public RelayCommand ReadPdfInfoCommand { get; }
         public IAsyncRelayCommand ExportCommand { get; }
         public RelayCommand BrowsePdfANewCommmand { get; }
         public RelayCommand BrowsePdfBNewCommmand { get; }
 
-        public bool CanReadPdfInfo => !string.IsNullOrWhiteSpace(PdfPath) && !IsReadingPdfInfo;
         public bool CanConfigureOutput => IsPdfInfoLoaded && !IsReadingPdfInfo;
 
         public PrepareTestCheckViewModel(ILogger<PrepareTestCheckViewModel> logger, PdfManager pdfManager, IServiceProvider serviceProvider) : base(logger)
@@ -45,7 +43,6 @@ namespace EduVS.ViewModels
             _pdfManager = pdfManager;
             _serviceProvider = serviceProvider;
             BrowsePdfCommand = new RelayCommand(BrowsePdf);
-            ReadPdfInfoCommand = new RelayCommand(ReadPdfInfo);
             BrowsePdfANewCommmand = new RelayCommand(BrowsePdfANew);
             BrowsePdfBNewCommmand = new RelayCommand(BrowsePdfBNew);
             ExportCommand = new AsyncRelayCommand(ExportTestCheckAsync);
@@ -54,7 +51,6 @@ namespace EduVS.ViewModels
         partial void OnPdfPathChanged(string? value)
         {
             ResetLoadedPdfInfo();
-            OnPropertyChanged(nameof(CanReadPdfInfo));
         }
 
         partial void OnIsPdfInfoLoadedChanged(bool value)
@@ -64,7 +60,6 @@ namespace EduVS.ViewModels
 
         partial void OnIsReadingPdfInfoChanged(bool value)
         {
-            OnPropertyChanged(nameof(CanReadPdfInfo));
             OnPropertyChanged(nameof(CanConfigureOutput));
         }
 
@@ -74,6 +69,7 @@ namespace EduVS.ViewModels
             if (path is null) return;
 
             PdfPath = path;
+            ReadPdfInfo();
         }
 
         private void ReadPdfInfo()
@@ -156,24 +152,28 @@ namespace EduVS.ViewModels
                 return;
             }
 
-            _logger.LogInformation($"Exporting filled tests with the following settings:\n\n" +
-                $"PDF: {PdfPath}\n" +
-                $"Detected test subject: {DetectedTestSubject}\n" +
-                $"Detected test name: {DetectedTestName}\n" +
-                $"Output mode: {(IsSplitByGroup ? "Split by group" : "Single merged PDF")}\n" +
-                $"Output path A: {PdfPathA}\n" +
-                $"Output path B: {PdfPathB}\n" +
-                $"Sorting: {(SortByPageNumber ? "By page number" : "By test number")}");
-
-            var progressWindow = _serviceProvider.GetRequiredService<PrepareTestCheckProgressWindowView>();
-            var progressVm = progressWindow.ViewModel;
-            progressVm.Initialize(SourcePdfPageCount);
-            var ownerWindow = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive && w != progressWindow);
-            progressWindow.Owner = ownerWindow;
-            progressWindow.Show();
+            PrepareTestCheckProgressWindowView? progressWindow = null;
+            PrepareTestCheckProgressViewModel? progressVm = null;
+            Window? ownerWindow = null;
 
             try
             {
+                _logger.LogInformation($"Exporting filled tests with the following settings:\n\n" +
+                    $"PDF: {PdfPath}\n" +
+                    $"Detected test subject: {DetectedTestSubject}\n" +
+                    $"Detected test name: {DetectedTestName}\n" +
+                    $"Output mode: {(IsSplitByGroup ? "Split by group" : "Single merged PDF")}\n" +
+                    $"Output path A: {PdfPathA}\n" +
+                    $"Output path B: {PdfPathB}\n" +
+                    $"Sorting: {(SortByPageNumber ? "By page number" : "By test number")}");
+
+                progressWindow = _serviceProvider.GetRequiredService<PrepareTestCheckProgressWindowView>();
+                progressVm = progressWindow.ViewModel;
+                progressVm.Initialize(SourcePdfPageCount);
+                ownerWindow = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive && w != progressWindow);
+                progressWindow.Owner = ownerWindow;
+                progressWindow.Show();
+
                 var progress = new Progress<PrepareTestCheckProgressInfo>(progressVm.Report);
                 await _pdfManager.GenerateTestCheckAsync(
                     PdfPath,
@@ -194,26 +194,26 @@ namespace EduVS.ViewModels
             }
             catch (OperationCanceledException)
             {
-                progressVm.Finish("Export canceled.");
-                progressVm.CanClose = true;
-                progressWindow.Close();
+                progressVm?.Finish("Export canceled.");
+                if (progressVm is not null) progressVm.CanClose = true;
+                progressWindow?.Close();
                 ownerWindow?.Activate();
                 ShowOwnedMessageBox(ownerWindow, "Export was canceled during test check preparation.", "Export Canceled", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                progressVm.Finish("Export failed.");
-                progressVm.CanClose = true;
-                progressWindow.Close();
+                progressVm?.Finish("Export failed.");
+                if (progressVm is not null) progressVm.CanClose = true;
+                progressWindow?.Close();
                 ownerWindow?.Activate();
                 _logger.LogError(ex, "Failed to export test check.");
                 ShowOwnedMessageBox(ownerWindow, $"Failed to export test check.\n\n{ex.Message}", "Export Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
-                if (progressWindow.IsVisible)
+                if (progressWindow?.IsVisible == true)
                 {
-                    progressVm.CanClose = true;
+                    if (progressVm is not null) progressVm.CanClose = true;
                     progressWindow.Close();
                 }
             }

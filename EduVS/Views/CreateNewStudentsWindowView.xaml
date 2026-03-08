@@ -16,15 +16,28 @@
             <RowDefinition Height="*"/>
             <RowDefinition Height="12"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="12"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <TextBlock Grid.Row="0" Text="Create new students" FontSize="24" FontWeight="SemiBold"/>
 
-        <GroupBox Grid.Row="2" Header="Source settings" Padding="12">
+        <GroupBox Grid.Row="2" Header="Source file" Padding="12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="170"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Source file (CSV):" VerticalAlignment="Center" FontWeight="Bold"/>
+                <TextBox Grid.Column="1" Text="{Binding SourceFilePath}" IsReadOnly="True" Margin="8,0,8,0"/>
+                <Button Grid.Column="2" Content="Browse..." Width="110" Command="{Binding BrowseSourceFileCommand}"/>
+            </Grid>
+        </GroupBox>
+
+        <GroupBox Grid.Row="6" Header="Source settings" Padding="12" Margin="0,12,0,0">
             <Grid>
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="10"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="10"/>
                     <RowDefinition Height="Auto"/>
@@ -36,30 +49,21 @@
                 <Grid Grid.Row="0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="170"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="Source file (CSV):" VerticalAlignment="Center" FontWeight="Bold"/>
-                    <TextBox Grid.Column="1" Text="{Binding SourceFilePath}" IsReadOnly="True" Margin="8,0,8,0"/>
-                    <Button Grid.Column="2" Content="Browse..." Width="110" Command="{Binding BrowseSourceFileCommand}"/>
-                </Grid>
-
-                <Grid Grid.Row="2">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="170"/>
-                        <ColumnDefinition Width="100"/>
-                        <ColumnDefinition Width="40"/>
-                        <ColumnDefinition Width="170"/>
                         <ColumnDefinition Width="100"/>
                     </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="10"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-                    <TextBlock Grid.Column="0" Text="CSV separator:" VerticalAlignment="Center" FontWeight="Bold"/>
-                    <TextBox Grid.Column="1"
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="CSV separator:" VerticalAlignment="Center" FontWeight="Bold"/>
+                    <TextBox Grid.Row="0" Grid.Column="1"
                              VerticalContentAlignment="Center"
                              Text="{Binding SelectedSeparator, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-                    <TextBlock Grid.Column="3" Text="Start row:" VerticalAlignment="Center" FontWeight="Bold"/>
-                    <Grid Grid.Column="4">
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Start row:" VerticalAlignment="Center" FontWeight="Bold"/>
+                    <Grid Grid.Row="2" Grid.Column="1">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="24"/>
@@ -78,13 +82,13 @@
                     </Grid>
                 </Grid>
 
-                <StackPanel Grid.Row="4" Orientation="Horizontal">
+                <StackPanel Grid.Row="2" Orientation="Horizontal">
                     <TextBlock Text="Name mapping:" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,10,0"/>
                     <CheckBox Content="Use one full-name column"
                               IsChecked="{Binding UseCombinedNameColumn, Mode=TwoWay}"/>
                 </StackPanel>
 
-                <Grid Grid.Row="6">
+                <Grid Grid.Row="4">
                     <Grid.Style>
                         <Style TargetType="Grid">
                             <Setter Property="Visibility" Value="Visible"/>
@@ -107,7 +111,7 @@
                               DisplayMemberPath="Name"/>
                 </Grid>
 
-                <Grid Grid.Row="6">
+                <Grid Grid.Row="4">
                     <Grid.Style>
                         <Style TargetType="Grid">
                             <Setter Property="Visibility" Value="Collapsed"/>
@@ -121,25 +125,27 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="170"/>
                         <ColumnDefinition Width="200"/>
-                        <ColumnDefinition Width="40"/>
-                        <ColumnDefinition Width="170"/>
-                        <ColumnDefinition Width="200"/>
                     </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="10"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-                    <TextBlock Grid.Column="0" Text="Name column:" VerticalAlignment="Center" FontWeight="Bold"/>
-                    <ComboBox Grid.Column="1"
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Name column:" VerticalAlignment="Center" FontWeight="Bold"/>
+                    <ComboBox Grid.Row="0" Grid.Column="1"
                               ItemsSource="{Binding AvailableColumns}"
                               SelectedItem="{Binding SelectedNameColumn, Mode=TwoWay}"
                               DisplayMemberPath="Name"/>
 
-                    <TextBlock Grid.Column="3" Text="Surname column:" VerticalAlignment="Center" FontWeight="Bold"/>
-                    <ComboBox Grid.Column="4"
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Surname column:" VerticalAlignment="Center" FontWeight="Bold"/>
+                    <ComboBox Grid.Row="2" Grid.Column="1"
                               ItemsSource="{Binding AvailableColumns}"
                               SelectedItem="{Binding SelectedSurnameColumn, Mode=TwoWay}"
                               DisplayMemberPath="Name"/>
                 </Grid>
 
-                <CheckBox Grid.Row="7"
+                <CheckBox Grid.Row="5"
                           Margin="170,10,0,0"
                           Content="Swap surname and name cols"
                           IsChecked="{Binding SwapSurnameAndNameColumns, Mode=TwoWay}">
@@ -187,7 +193,7 @@
             </GroupBox>
         </Grid>
 
-        <Grid Grid.Row="6">
+        <Grid Grid.Row="8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="170"/>
                 <ColumnDefinition Width="300"/>

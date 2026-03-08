@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:EduVS.Views"
         mc:Ignorable="d"
-        Title="Prepare Test Check" Height="560" Width="800">
+        Title="Prepare Test Check" Height="600" Width="800">
     <Grid Margin="16" >
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -24,7 +24,7 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="12"/>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="12"/>
+                    <RowDefinition Height="8"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="8"/>
                     <RowDefinition Height="Auto"/>
@@ -45,36 +45,29 @@
                         Width="100"
                         Command="{Binding BrowsePdfCommand}"/>
 
-                <Button Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3"
-                        Content="Read PDF Info"
-                        HorizontalAlignment="Left"
-                        Width="140"
-                        IsEnabled="{Binding CanReadPdfInfo}"
-                        Command="{Binding ReadPdfInfoCommand}"/>
-
-                <TextBlock Grid.Row="4" Grid.Column="0"
+                <TextBlock Grid.Row="2" Grid.Column="0"
                            Text="Test subject:"
                            Margin="0,0,8,0"
                            VerticalAlignment="Center"/>
-                <TextBox Grid.Row="4" Grid.Column="1"
+                <TextBox Grid.Row="2" Grid.Column="1"
                          Text="{Binding DetectedTestSubject}"
                          IsReadOnly="True"
                          IsEnabled="False"
                          VerticalContentAlignment="Center"/>
 
-                <TextBlock Grid.Row="6" Grid.Column="0"
+                <TextBlock Grid.Row="4" Grid.Column="0"
                            Text="Test name:"
                            Margin="0,0,8,0"
                            VerticalAlignment="Center"/>
-                <TextBox Grid.Row="6" Grid.Column="1"
+                <TextBox Grid.Row="4" Grid.Column="1"
                          Text="{Binding DetectedTestName}"
                          IsReadOnly="True"
                          IsEnabled="False"
                          VerticalContentAlignment="Center"/>
 
-                <TextBlock Grid.Row="4" Grid.Column="2"
-                           Margin="16,0,0,0"
-                           VerticalAlignment="Top"
+                <TextBlock Grid.Row="6" Grid.Column="1"
+                           Margin="0,0,0,0"
+                           VerticalAlignment="Center"
                            Text="{Binding SourcePdfPageCount, StringFormat=Pages: {0}}"/>
             </Grid>
         </GroupBox>

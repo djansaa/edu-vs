@@ -122,10 +122,10 @@
         <Grid Grid.Row="5">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="130"/>
+                <ColumnDefinition Width="110"/>
                 <ColumnDefinition Width="20"/>
                 <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="110"/>
+                <ColumnDefinition Width="130"/>
                 <ColumnDefinition Width="20"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="130"/>
@@ -133,10 +133,19 @@
             </Grid.ColumnDefinitions>
 
             <TextBlock Grid.Column="0"
+                       Text="Group:"
+                       VerticalAlignment="Center"
+                       FontWeight="Bold"/>
+            <ComboBox Grid.Column="1"
+                      Margin="8,0,0,0"
+                      ItemsSource="{Binding AvailableGroups}"
+                      SelectedItem="{Binding SelectedGroupId}"/>
+
+            <TextBlock Grid.Column="3"
                        Text="TestId:"
                        VerticalAlignment="Center"
                        FontWeight="Bold"/>
-            <Grid Grid.Column="1"
+            <Grid Grid.Column="4"
                   Margin="8,0,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -162,15 +171,6 @@
                             Command="{Binding DecreaseTestIdCommand}"/>
                 </Grid>
             </Grid>
-
-            <TextBlock Grid.Column="3"
-                       Text="Group:"
-                       VerticalAlignment="Center"
-                       FontWeight="Bold"/>
-            <ComboBox Grid.Column="4"
-                      Margin="8,0,0,0"
-                      ItemsSource="{Binding AvailableGroups}"
-                      SelectedItem="{Binding SelectedGroupId}"/>
 
             <TextBlock Grid.Column="6"
                        Text="Page:"
